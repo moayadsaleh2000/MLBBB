@@ -12,16 +12,12 @@ const WaitingPage = () => {
   const [adminClickCount, setAdminClickCount] = useState(0);
   const navigate = useNavigate();
 
-  const isAdminRef = useRef(localStorage.getItem("isAdmin") === "true");
-  const tokenRef = useRef(localStorage.getItem("mlbb_token"));
-
-  // رابط السيرفر الموحد
   const API_BASE_URL = "https://mlbbb-production.up.railway.app";
 
-  const getPlayerDataFromToken = () => {
+  const getPlayerDataFromToken = (currentToken) => {
     try {
-      if (tokenRef.current) {
-        return JSON.parse(atob(tokenRef.current.split(".")[1]));
+      if (currentToken) {
+        return JSON.parse(atob(currentToken.split(".")[1]));
       }
     } catch (e) {
       return null;
@@ -31,6 +27,9 @@ const WaitingPage = () => {
 
   const fetchStatus = async () => {
     try {
+      const currentToken = localStorage.getItem("token");
+      if (!currentToken) return;
+
       const [playersRes, settingsRes] = await Promise.all([
         axios.get(`${API_BASE_URL}/api/players`),
         axios.get(`${API_BASE_URL}/api/settings`),
@@ -40,39 +39,33 @@ const WaitingPage = () => {
       const serverVersion = settingsRes.data.version || 0;
       setPlayers(latestPlayers);
 
-      const playerData = getPlayerDataFromToken();
+      const playerData = getPlayerDataFromToken(currentToken);
 
       if (playerData) {
         const playerVersion = playerData.version || 0;
-        const playerName = playerData.name;
 
-        const isDatabaseEmpty = latestPlayers.length === 0;
-        const isVersionChanged = playerVersion !== serverVersion;
-        const isMyNameDeleted = !latestPlayers.some(
-          (p) => p.name === playerName,
-        );
-
-        if (isDatabaseEmpty || isVersionChanged || isMyNameDeleted) {
+        // --- الحل الجذري: الطرد فقط إذا تم تصفير البطولة (تغير الـ Version) ---
+        // لغينا شرط حذف الاسم عشان ما تنطرد بالخطأ بسبب سرعة النت
+        if (playerVersion !== serverVersion) {
+          console.log("تم تصفير البطولة، جاري تسجيل الخروج...");
           handleLogoutForcefully();
         }
       }
     } catch (err) {
-      console.error("Connection Error");
+      console.error("Connection Error - Waiting for server...");
     }
   };
 
   const handleLogoutForcefully = () => {
     if (window.statusInterval) clearInterval(window.statusInterval);
-    localStorage.clear();
+    localStorage.removeItem("token"); // نحذف التوكين فقط
     window.location.href = "/";
   };
 
   useEffect(() => {
     fetchStatus();
-    window.statusInterval = setInterval(fetchStatus, 3000);
-    return () => {
-      if (window.statusInterval) clearInterval(window.statusInterval);
-    };
+    const interval = setInterval(fetchStatus, 3000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleAdminTitleClick = async () => {
@@ -82,14 +75,13 @@ const WaitingPage = () => {
       const { value: code } = await Swal.fire({
         title: "دخول الإدارة",
         input: "password",
-        inputPlaceholder: "أدخل الرمز السري",
+        inputPlaceholder: "الرمز السري",
         background: "#0f172a",
         color: "#fff",
         confirmButtonColor: "#3b82f6",
       });
       if (code === "8520085") {
         setIsAdminState(true);
-        isAdminRef.current = true;
         localStorage.setItem("isAdmin", "true");
         Swal.fire({
           icon: "success",
@@ -106,11 +98,11 @@ const WaitingPage = () => {
   const handleReset = async () => {
     const confirm = await Swal.fire({
       title: "تصفير البطولة؟",
-      text: "سيتم حذف الجميع وطردهم فوراً!",
+      text: "سيتم حذف الجميع وتغيير نسخة البطولة!",
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#ef4444",
-      confirmButtonText: "نعم، تصفير الكل",
+      confirmButtonText: "نعم، تصفير",
     });
 
     if (confirm.isConfirmed) {
@@ -149,9 +141,7 @@ const WaitingPage = () => {
       return;
     }
     try {
-      await axios.post(`${API_BASE_URL}/api/toggle-reg`, {
-        status: false,
-      });
+      await axios.post(`${API_BASE_URL}/api/toggle-reg`, { status: false });
       navigate("/teams");
     } catch (err) {
       Swal.fire("خطأ", "فشل البدء", "error");
@@ -177,7 +167,7 @@ const WaitingPage = () => {
             <div className={`status-badge ${canStart ? "ready" : ""}`}>
               المسجلون: {totalPlayers}
             </div>
-            <div className="teams-info">{completedTeams} أفرقة جاهزة 🛡️</div>
+            <div className="teams-info">{completedTeams} فرق جاهزة 🛡️</div>
           </div>
         </header>
 

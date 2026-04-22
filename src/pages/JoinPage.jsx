@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
@@ -12,6 +12,14 @@ const JoinPage = () => {
     primaryRole: "",
     secondaryRole: "",
   });
+
+  // الفحص عند فتح الصفحة: إذا مسجل روح على الـ Waiting
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      navigate("/waiting");
+    }
+  }, [navigate]);
 
   const ranks = [
     "Epic",
@@ -35,61 +43,51 @@ const JoinPage = () => {
 
   const handleJoin = async (e) => {
     e.preventDefault();
-
-    // فحص البيانات قبل الإرسال
-    if (!formData.name.trim() || formData.name.length < 3) {
-      return fireAlert("تنبيه", "الاسم قصير جداً!", "warning");
-    }
-    if (!formData.rank || !formData.primaryRole || !formData.secondaryRole) {
-      return fireAlert("تنبيه", "يرجى تعبئة جميع الحقول", "info");
-    }
-    if (formData.primaryRole === formData.secondaryRole) {
-      return fireAlert("خطأ", "لا يمكنك اختيار نفس الدور مرتين", "error");
-    }
+    if (!formData.name.trim() || formData.name.length < 3)
+      return fireAlert("تنبيه", "الاسم قصير!", "warning");
+    if (!formData.rank || !formData.primaryRole || !formData.secondaryRole)
+      return fireAlert("تنبيه", "أكمل الحقول", "info");
+    if (formData.primaryRole === formData.secondaryRole)
+      return fireAlert("خطأ", "الدور مكرر", "error");
 
     try {
       Swal.fire({
         title: "جاري التسجيل...",
         didOpen: () => Swal.showLoading(),
       });
-
-      // --- التعديل هنا: استخدام رابط Railway الجديد ---
       const res = await axios.post(
         "https://mlbbb-production.up.railway.app/api/join",
         formData,
       );
 
+      // تخزين التوكين بالاسم الموحد "token"
       localStorage.setItem("token", res.data.token);
 
       Swal.fire({
         icon: "success",
         title: "تم التسجيل!",
-        text: "بالتوفيق يا بطل",
         timer: 2000,
         showConfirmButton: false,
       });
-
       setTimeout(() => navigate("/waiting"), 2000);
     } catch (err) {
-      const msg = err.response?.data?.message || "السيرفر لا يستجيب";
-      fireAlert("فشل التسجيل", msg, "error");
+      fireAlert(
+        "فشل التسجيل",
+        err.response?.data?.message || "خطأ سيرفر",
+        "error",
+      );
     }
   };
 
   return (
     <div className="join-container">
       <div className="join-card">
-        <div className="header-section">
-          <h1 className="join-title">MVP</h1>
-          <span className="join-subtitle">Tournament Registry</span>
-        </div>
-
-        <form onSubmit={handleJoin} className="join-form" noValidate>
+        <h1 className="join-title">MVP Tournament</h1>
+        <form onSubmit={handleJoin} className="join-form">
           <div className="input-group">
-            <label className="input-label">In-Game Name</label>
+            <label>In-Game Name</label>
             <input
               type="text"
-              placeholder="Ex: Moayad_Saleh"
               className="join-input"
               value={formData.name}
               onChange={(e) =>
@@ -97,9 +95,8 @@ const JoinPage = () => {
               }
             />
           </div>
-
           <div className="input-group">
-            <label className="input-label">Current Rank</label>
+            <label>Rank</label>
             <select
               className="join-input"
               value={formData.rank}
@@ -107,7 +104,7 @@ const JoinPage = () => {
                 setFormData({ ...formData, rank: e.target.value })
               }
             >
-              <option value="">Choose your rank...</option>
+              <option value="">Choose Rank...</option>
               {ranks.map((r) => (
                 <option key={r} value={r}>
                   {r}
@@ -115,44 +112,36 @@ const JoinPage = () => {
               ))}
             </select>
           </div>
-
           <div className="roles-grid">
-            <div className="input-group">
-              <label className="input-label">Main Role</label>
-              <select
-                className="join-input text-sm"
-                value={formData.primaryRole}
-                onChange={(e) =>
-                  setFormData({ ...formData, primaryRole: e.target.value })
-                }
-              >
-                <option value="">Role 1</option>
-                {roles.map((r) => (
-                  <option key={r} value={r}>
-                    {r}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="input-group">
-              <label className="input-label">Sub Role</label>
-              <select
-                className="join-input text-sm"
-                value={formData.secondaryRole}
-                onChange={(e) =>
-                  setFormData({ ...formData, secondaryRole: e.target.value })
-                }
-              >
-                <option value="">Role 2</option>
-                {roles.map((r) => (
-                  <option key={r} value={r}>
-                    {r}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <select
+              className="join-input"
+              value={formData.primaryRole}
+              onChange={(e) =>
+                setFormData({ ...formData, primaryRole: e.target.value })
+              }
+            >
+              <option value="">Main Role</option>
+              {roles.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
+            <select
+              className="join-input"
+              value={formData.secondaryRole}
+              onChange={(e) =>
+                setFormData({ ...formData, secondaryRole: e.target.value })
+              }
+            >
+              <option value="">Sub Role</option>
+              {roles.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
           </div>
-
           <button type="submit" className="join-button">
             Confirm & Join
           </button>
@@ -161,5 +150,4 @@ const JoinPage = () => {
     </div>
   );
 };
-
 export default JoinPage;
