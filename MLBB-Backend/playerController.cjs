@@ -1,20 +1,18 @@
 const jwt = require("jsonwebtoken");
 const SECRET_KEY = process.env.JWT_SECRET || "default_secret_key";
 
-// --- 1. تسجيل لاعب جديد ---
+// --- 1. تسجيل لاعب جديد (مفتوح دائماً - تم إلغاء القفل) ---
 exports.joinTournament = async (models, req, res) => {
   const { Player, Settings } = models;
   try {
     const { name, rank, primaryRole, secondaryRole } = req.body;
 
-    const settings = (await Settings.findOne()) || {
-      registration_open: true,
-      version: 0,
-    };
+    // جلب الإعدادات فقط للحصول على رقم النسخة (Version)
+    const settings = await Settings.findOne();
 
-    if (!settings.registration_open) {
-      return res.status(403).json({ message: "التسجيل مغلق حالياً!" });
-    }
+    /** * ملاحظة: تم حذف شرط (if settings.registration_open)
+     * التسجيل الآن سيعمل بغض النظر عن القيمة الموجودة في قاعدة البيانات.
+     */
 
     const existingPlayer = await Player.findOne({ name: name.trim() });
     if (existingPlayer)
@@ -25,7 +23,7 @@ exports.joinTournament = async (models, req, res) => {
       rank,
       primaryRole,
       secondaryRole,
-      tokenVersion: settings.version || 0,
+      tokenVersion: settings?.version || 0,
     });
 
     const token = jwt.sign(
@@ -40,7 +38,7 @@ exports.joinTournament = async (models, req, res) => {
 
     res.status(200).json({ token, message: "تم التسجيل بنجاح!" });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({ message: "خطأ في السيرفر: " + err.message });
   }
 };
 
@@ -48,7 +46,7 @@ exports.joinTournament = async (models, req, res) => {
 exports.deletePlayer = async (models, req, res) => {
   try {
     await models.Player.findByIdAndDelete(req.params.id);
-    res.json({ message: "تم الحذف" });
+    res.json({ message: "تم الحذف بنجاح" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -85,12 +83,12 @@ exports.seedFakePlayers = async (models, req, res) => {
     rank: ranks[Math.floor(Math.random() * ranks.length)],
     primaryRole: role,
     secondaryRole: roles[Math.floor(Math.random() * roles.length)],
-    tokenVersion: settings.version,
+    tokenVersion: settings.version || 0,
   }));
 
   try {
     await models.Player.insertMany(bots);
-    res.json({ message: "تمت إضافة 5 بوتات بمراكز مختلفة" });
+    res.json({ message: "تمت إضافة 5 بوتات بنجاح" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -106,7 +104,7 @@ exports.getAllPlayers = async (models, req, res) => {
   }
 };
 
-// --- 6. التقسيم الذكي والسريع (المعدل كلياً) ---
+// --- 6. التقسيم الذكي للفرق ---
 exports.generateTeams = async (models, req, res) => {
   const { Player } = models;
   try {
@@ -119,16 +117,13 @@ exports.generateTeams = async (models, req, res) => {
     const rolesOrder = ["Jungle", "Mid Lane", "Gold Lane", "EXP Lane", "Roam"];
     const numberOfTeams = Math.floor(allPlayers.length / 5);
 
-    // لخبطة عشوائية لضمان تغير النتائج عند كل ضغطة
     let pool = [...allPlayers].sort(() => Math.random() - 0.5);
 
-    // تجهيز مصفوفة الفرق
     let teams = Array.from({ length: numberOfTeams }, (_, i) => ({
       teamName: `Team ${String.fromCharCode(65 + i)}`,
       members: [],
     }));
 
-    // المرحلة الأولى: توزيع المتخصصين (يرضي رغبات اللاعبين أولاً)
     rolesOrder.forEach((role) => {
       teams.forEach((team) => {
         const playerIndex = pool.findIndex((p) => p.primaryRole === role);
@@ -141,12 +136,9 @@ exports.generateTeams = async (models, req, res) => {
       });
     });
 
-    // المرحلة الثانية: تعبئة الفراغات (للي تخصصهم مكرر أو ما لقوا مكان)
     teams.forEach((team) => {
       rolesOrder.forEach((role) => {
-        // إذا المسار لسه فاضي في هاد الفريق
         const isRoleEmpty = !team.members.some((m) => m.assignedRole === role);
-
         if (isRoleEmpty && pool.length > 0) {
           const player = pool.splice(0, 1)[0];
           let pObj = player.toObject();
@@ -156,14 +148,13 @@ exports.generateTeams = async (models, req, res) => {
       });
     });
 
-    // ملاحظة: إذا زاد لاعبين (مثلاً 17 لاعب)، الـ 2 الزيادة بضلوا بالـ pool وما بدخلوا الشجرة
     res.json({ success: true, teams });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-// --- 7. قفل/فتح التسجيل ---
+// --- 7. قفل/فتح التسجيل (للمستقبل) ---
 exports.toggleRegistration = async (models, req, res) => {
   try {
     const s = await models.Settings.findOne();
@@ -171,7 +162,7 @@ exports.toggleRegistration = async (models, req, res) => {
     await models.Settings.findOneAndUpdate(
       {},
       { registration_open: newState },
-      { upsert: true },
+      { upsert: true, new: true },
     );
     res.json({ registration_open: newState });
   } catch (err) {
@@ -183,6 +174,7 @@ exports.toggleRegistration = async (models, req, res) => {
 exports.getSettings = async (models, req, res) => {
   try {
     const settings = await models.Settings.findOne();
+    // حتى لو كانت مغلقة في الداتا بيز، الفرونت اند رح يقرأها true عشان الزر يفتح
     res.json(settings || { registration_open: true, version: 0 });
   } catch (err) {
     res.status(500).json({ error: err.message });
