@@ -1,6 +1,9 @@
 const jwt = require("jsonwebtoken");
 const SECRET_KEY = process.env.JWT_SECRET || "default_secret_key";
 
+// --- متغير لتخزين الفرق في ذاكرة السيرفر عشان ما تتغير كل 5 ثواني ---
+let cachedTeams = null;
+
 // --- 1. تسجيل لاعب جديد ---
 exports.joinTournament = async (models, req, res) => {
   const { Player, Settings } = models;
@@ -40,6 +43,7 @@ exports.joinTournament = async (models, req, res) => {
 exports.deletePlayer = async (models, req, res) => {
   try {
     await models.Player.findByIdAndDelete(req.params.id);
+    cachedTeams = null; // تصفير الفرق عشان يعيد التوزيع لو نقص لاعب
     res.json({ message: "تم الحذف بنجاح" });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -52,13 +56,10 @@ exports.resetAll = async (models, req, res) => {
     return res.status(401).json({ message: "رمز خاطئ" });
   try {
     await models.Player.deleteMany({});
-    await models.Team.deleteMany({}); // تنظيف الفرق أيضاً عند التصفير
+    cachedTeams = null; // تصفير الكاش
     const settings = await models.Settings.findOneAndUpdate(
       {},
-      {
-        $set: { registration_open: true },
-        $inc: { version: 1 },
-      },
+      { $set: { registration_open: true }, $inc: { version: 1 } },
       { upsert: true, new: true },
     );
     res.json({ message: "تم التصفير بنجاح", version: settings.version });
@@ -83,6 +84,7 @@ exports.seedFakePlayers = async (models, req, res) => {
 
   try {
     await models.Player.insertMany(bots);
+    cachedTeams = null; // تصفير عشان يوزعهم مع البشر
     res.json({ message: "تمت إضافة 5 بوتات بنجاح" });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -99,31 +101,28 @@ exports.getAllPlayers = async (models, req, res) => {
   }
 };
 
-// --- 6. عرض الفرق الثابتة (التعديل الجديد للعرض المستمر) ---
+// --- 6. عرض الفرق (التعديل اللي بحل اللخبطة) ---
 exports.getTeams = async (models, req, res) => {
-  try {
-    const teams = await models.Team.find();
-    res.json({ success: true, teams });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  // إذا الفرق "مخزنة بالذاكرة"، ابعتها فوراً بدون خلط
+  if (cachedTeams) {
+    return res.json({ success: true, teams: cachedTeams });
   }
+  // إذا مش مخزنة (أول مرة)، نادي دالة التوزيع
+  return exports.shuffleAndSaveTeams(models, req, res);
 };
 
-// --- 7. توليد وحفظ الفرق (للأدمن فقط) ---
+// --- 7. توليد الفرق (خوارزمية التوزيع) ---
 exports.shuffleAndSaveTeams = async (models, req, res) => {
-  const { Player, Team } = models;
+  const { Player } = models;
   try {
     let allPlayers = await Player.find();
     if (allPlayers.length < 5)
-      return res
-        .status(400)
-        .json({ message: "نحتاج 5 لاعبين على الأقل لتكوين فريق" });
+      return res.status(400).json({ message: "نحتاج 5 لاعبين على الأقل" });
 
     const rolesOrder = ["Jungle", "Mid Lane", "Gold Lane", "EXP Lane", "Roam"];
     const numberOfTeams = Math.floor(allPlayers.length / 5);
 
     let pool = [...allPlayers].sort(() => Math.random() - 0.5);
-
     let teams = Array.from({ length: numberOfTeams }, (_, i) => ({
       teamName: `Team ${String.fromCharCode(65 + i)}`,
       members: [],
@@ -153,9 +152,8 @@ exports.shuffleAndSaveTeams = async (models, req, res) => {
       });
     });
 
-    // حفظ الفرق في قاعدة البيانات لضمان ثباتها
-    await Team.deleteMany({});
-    await Team.insertMany(teams);
+    // تخزين في الذاكرة (Cache) عشان تثبت
+    cachedTeams = teams;
 
     res.json({ success: true, teams });
   } catch (err) {
@@ -163,7 +161,7 @@ exports.shuffleAndSaveTeams = async (models, req, res) => {
   }
 };
 
-// --- 8. قفل/فتح التسجيل ---
+// --- 8 & 9 جلب الإعدادات والتحكم ---
 exports.toggleRegistration = async (models, req, res) => {
   try {
     const s = await models.Settings.findOne();
@@ -179,7 +177,6 @@ exports.toggleRegistration = async (models, req, res) => {
   }
 };
 
-// --- 9. جلب الإعدادات ---
 exports.getSettings = async (models, req, res) => {
   try {
     const settings = await models.Settings.findOne();
