@@ -36,10 +36,18 @@ module.exports = (db) => {
     playerController.toggleRegistration(db, req, res),
   );
 
-  // 8. توليد وتقسيم الفرق (الجديد والمهم!)
-  // هاد المسار اللي صفحة الأفرقة رح تناديه أول ما تفتح
+  // --- التعديل هنا (8 & 9) ---
+
+  // 8. عرض الفرق المخزنة (ثابت - للاعبين والـ Interval)
+  // هاد المسار اللي صفحة الأفرقة رح تناديه كل 5 ثواني
   router.get("/generate-teams", (req, res) =>
-    playerController.generateTeams(db, req, res),
+    playerController.getTeams(db, req, res),
+  );
+
+  // 9. توليد وحفظ فرق جديدة (للأدمن فقط)
+  // هاد المسار يتم مناداته فقط عند الضغط على زر "إعادة التشكيل"
+  router.post("/shuffle-teams", (req, res) =>
+    playerController.shuffleAndSaveTeams(db, req, res),
   );
 
   return router;

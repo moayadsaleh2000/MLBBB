@@ -24,8 +24,21 @@ const settingsSchema = new mongoose.Schema({
   reveal_started: { type: Boolean, default: false },
 });
 
+// موديل الفرق الجديد لحفظ التشكيلة
+const teamSchema = new mongoose.Schema({
+  teamName: String,
+  members: [
+    {
+      name: String,
+      rank: String,
+      assignedRole: String,
+    },
+  ],
+});
+
 const Player = mongoose.model("Player", playerSchema);
 const Settings = mongoose.model("Settings", settingsSchema);
+const Team = mongoose.model("Team", teamSchema);
 
 async function seedSettings() {
   const count = await Settings.countDocuments();
@@ -34,4 +47,4 @@ async function seedSettings() {
   }
 }
 
-module.exports = { connectDB, Player, Settings };
+module.exports = { connectDB, Player, Settings, Team };

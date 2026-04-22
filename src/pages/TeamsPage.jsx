@@ -8,19 +8,17 @@ const TeamsPage = () => {
   const [isAdmin] = useState(localStorage.getItem("isAdmin") === "true");
   const navigate = useNavigate();
 
+  // 1. جلب الفرق (GET) - لجلب البيانات المخزنة مسبقاً في الداتا بيز
   const fetchTeams = async () => {
     try {
-      // --- التعديل هنا: استخدام رابط Railway بدلاً من localhost ---
       const res = await axios.get(
         "https://mlbbb-production.up.railway.app/api/generate-teams",
       );
 
       if (res.data.success) {
         setTeams(res.data.teams);
-
-        // حفظ الفرق في الـ LocalStorage عشان صفحة الـ Bracket تقرأهم
+        // حفظ الفرق في الـ LocalStorage لصفحة الـ Bracket
         localStorage.setItem("generatedTeams", JSON.stringify(res.data.teams));
-
         checkSecurity(res.data.teams);
       }
     } catch (err) {
@@ -28,7 +26,23 @@ const TeamsPage = () => {
     }
   };
 
-  // فحص إذا كان اللاعب لا يزال موجوداً (للطرد التلقائي)
+  // 2. دالة إعادة التشكيل (POST) - للأدمن فقط لعمل خلط جديد وحفظه
+  const handleReshuffle = async () => {
+    try {
+      const res = await axios.post(
+        "https://mlbbb-production.up.railway.app/api/shuffle-teams",
+      );
+      if (res.data.success) {
+        setTeams(res.data.teams);
+        alert("تم إعادة تشكيل الفرق وحفظها بنجاح! ⚔️");
+      }
+    } catch (err) {
+      console.error("Error reshuffling teams:", err);
+      alert("فشل إعادة التشكيل. تأكد من وجود عدد كافٍ من اللاعبين.");
+    }
+  };
+
+  // فحص إذا كان اللاعب لا يزال موجوداً (للطرد التلقائي في حال تم حذفه)
   const checkSecurity = (allTeams) => {
     if (isAdmin) return;
     const myName = localStorage.getItem("playerName");
@@ -36,20 +50,19 @@ const TeamsPage = () => {
       t.members.map((m) => m.name),
     );
 
-    // إذا الفرق فاضية (تصفير) أو اسمي مش بينهم (حذف)
     if (allPlayersInTeams.length === 0 || !allPlayersInTeams.includes(myName)) {
       handleLogout();
     }
   };
 
   const handleLogout = () => {
-    localStorage.clear(); // تصفير كل شيء عند الطرد
+    localStorage.clear();
     navigate("/");
   };
 
   useEffect(() => {
     fetchTeams();
-    // فحص دوري كل 5 ثواني للتحديث التلقائي
+    // فحص دوري كل 5 ثواني لجلب النسخة الثابتة من السيرفر
     const interval = setInterval(fetchTeams, 5000);
     return () => clearInterval(interval);
   }, []);
@@ -110,8 +123,9 @@ const TeamsPage = () => {
           ↩️ عودة
         </button>
 
+        {/* زر الأدمن ينادي handleReshuffle (POST) */}
         {isAdmin && (
-          <button className="btn btn-warning" onClick={fetchTeams}>
+          <button className="btn btn-warning" onClick={handleReshuffle}>
             🔄 إعادة التشكيل
           </button>
         )}

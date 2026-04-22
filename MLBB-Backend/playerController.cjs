@@ -1,18 +1,12 @@
 const jwt = require("jsonwebtoken");
 const SECRET_KEY = process.env.JWT_SECRET || "default_secret_key";
 
-// --- 1. تسجيل لاعب جديد (مفتوح دائماً - تم إلغاء القفل) ---
+// --- 1. تسجيل لاعب جديد ---
 exports.joinTournament = async (models, req, res) => {
   const { Player, Settings } = models;
   try {
     const { name, rank, primaryRole, secondaryRole } = req.body;
-
-    // جلب الإعدادات فقط للحصول على رقم النسخة (Version)
     const settings = await Settings.findOne();
-
-    /** * ملاحظة: تم حذف شرط (if settings.registration_open)
-     * التسجيل الآن سيعمل بغض النظر عن القيمة الموجودة في قاعدة البيانات.
-     */
 
     const existingPlayer = await Player.findOne({ name: name.trim() });
     if (existingPlayer)
@@ -58,6 +52,7 @@ exports.resetAll = async (models, req, res) => {
     return res.status(401).json({ message: "رمز خاطئ" });
   try {
     await models.Player.deleteMany({});
+    await models.Team.deleteMany({}); // تنظيف الفرق أيضاً عند التصفير
     const settings = await models.Settings.findOneAndUpdate(
       {},
       {
@@ -104,9 +99,19 @@ exports.getAllPlayers = async (models, req, res) => {
   }
 };
 
-// --- 6. التقسيم الذكي للفرق ---
-exports.generateTeams = async (models, req, res) => {
-  const { Player } = models;
+// --- 6. عرض الفرق الثابتة (التعديل الجديد للعرض المستمر) ---
+exports.getTeams = async (models, req, res) => {
+  try {
+    const teams = await models.Team.find();
+    res.json({ success: true, teams });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// --- 7. توليد وحفظ الفرق (للأدمن فقط) ---
+exports.shuffleAndSaveTeams = async (models, req, res) => {
+  const { Player, Team } = models;
   try {
     let allPlayers = await Player.find();
     if (allPlayers.length < 5)
@@ -148,13 +153,17 @@ exports.generateTeams = async (models, req, res) => {
       });
     });
 
+    // حفظ الفرق في قاعدة البيانات لضمان ثباتها
+    await Team.deleteMany({});
+    await Team.insertMany(teams);
+
     res.json({ success: true, teams });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-// --- 7. قفل/فتح التسجيل (للمستقبل) ---
+// --- 8. قفل/فتح التسجيل ---
 exports.toggleRegistration = async (models, req, res) => {
   try {
     const s = await models.Settings.findOne();
@@ -170,11 +179,10 @@ exports.toggleRegistration = async (models, req, res) => {
   }
 };
 
-// --- 8. جلب الإعدادات ---
+// --- 9. جلب الإعدادات ---
 exports.getSettings = async (models, req, res) => {
   try {
     const settings = await models.Settings.findOne();
-    // حتى لو كانت مغلقة في الداتا بيز، الفرونت اند رح يقرأها true عشان الزر يفتح
     res.json(settings || { registration_open: true, version: 0 });
   } catch (err) {
     res.status(500).json({ error: err.message });
