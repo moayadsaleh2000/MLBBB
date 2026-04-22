@@ -1,0 +1,154 @@
+/* الخلفية الأساسية */
+.join-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  background-image: url("../assets/ML.webp");
+  background-size: cover;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  margin: 0;
+}
+
+/* كرت التسجيل */
+.join-card {
+  background-color: rgba(30, 41, 59, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  padding: 10px;
+  border-radius: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+.header-section {
+  text-align: center;
+  margin-bottom: 25px;
+}
+
+/* العناوين */
+.join-title {
+  font-size: 3.5rem;
+  font-weight: 900;
+  font-style: italic;
+  margin: 0;
+  color: #3b82f6;
+  text-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+}
+
+.join-subtitle {
+  display: block;
+  color: #94a3b8;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 4px;
+}
+
+/* تنظيم الفورم */
+.join-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px; /* بديل لـ space-y-5 */
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.input-label {
+  color: #94a3b8;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: left;
+}
+
+/* الحقول */
+.join-input {
+  width: 100%;
+  padding: 15px;
+  background-color: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 12px;
+  color: white;
+  font-size: 16px;
+  outline: none;
+  box-sizing: border-box;
+  transition: all 0.3s ease;
+}
+
+.join-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.text-sm {
+  font-size: 14px;
+}
+
+/* توزيع الأدوار جنب بعض */
+.roles-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+/* الزر */
+.join-button {
+  width: 100%;
+  padding: 15px;
+  background-color: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition:
+    transform 0.2s,
+    background-color 0.3s;
+  margin-top: 8px;
+}
+
+.join-button:hover {
+  background-color: #3b82f6;
+  transform: translateY(-2px);
+}
+
+.join-button:active {
+  transform: scale(0.98);
+}
+/* --- تنسيقات الموبايل --- */
+@media (max-width: 480px) {
+  .join-container {
+    padding: 10px; /* تقليل الحواف الخارجية لزيادة مساحة الرؤية */
+    background-position: center; /* التأكد من أن الصورة تتوسط الشاشة */
+  }
+
+  .join-card {
+    padding: 25px 20px; /* تقليل الحشوة الداخلية للكرت */
+    max-width: 90%; /* جعل الكرت يأخذ 90% من عرض الشاشة لترك مساحة للخلفية */
+    border-radius: 20px; /* تنعيم الحواف لتناسب الشاشات الصغيرة */
+  }
+
+  .join-title {
+    font-size: 2.5rem; /* تصغير العنوان قليلاً عشان ما يطلع عن السطر */
+  }
+
+  .roles-grid {
+    /* إذا كانت الشاشة صغيرة جداً، يفضل جعل الأدوار تحت بعض بدل جنب بعض */
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+
+  .join-button {
+    padding: 12px;
+    font-size: 14px;
+  }
+}

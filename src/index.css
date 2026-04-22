@@ -1,0 +1,17 @@
+@import "tailwindcss";
+
+/* تخصيصات إضافية عشان الـ Scroll والـ Background */
+@layer base {
+  body {
+    @apply bg-slate-900 text-slate-200 antialiased;
+    margin: 0;
+    padding: 0;
+  }
+}
+
+/* إذا حابب تخلي الـ Root يغطي كامل الشاشة بدون حدود */
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}

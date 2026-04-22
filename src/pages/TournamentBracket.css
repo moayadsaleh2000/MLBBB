@@ -1,0 +1,165 @@
+.tournament-page {
+  background: #050a18;
+  min-height: 100vh;
+  padding: 15px;
+  color: white;
+  direction: rtl;
+}
+.header-nav {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #1e293b;
+  padding-bottom: 15px;
+}
+.admin-btns {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  justify-content: center;
+}
+.back-btn,
+.undo-btn,
+.reset-btn {
+  flex: 1;
+  max-width: 100px;
+  padding: 10px;
+  border-radius: 8px;
+  border: none;
+  font-weight: bold;
+  font-size: 0.8rem;
+}
+.back-btn {
+  background: #334155;
+  color: white;
+}
+.undo-btn {
+  background: #f39c12;
+  color: white;
+}
+.reset-btn {
+  background: #ef4444;
+  color: white;
+}
+
+/* تصميم الشجرة (Mobile Friendly) */
+.bracket-area {
+  overflow-x: auto;
+  padding: 10px 0;
+  display: flex;
+}
+.bracket-wrapper {
+  display: flex;
+  gap: 30px;
+  min-width: max-content;
+}
+.round-col {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 150px;
+  justify-content: space-around;
+}
+.round-col h3 {
+  text-align: center;
+  color: #fbbf24;
+  font-size: 0.9rem;
+}
+.m-box {
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.t-row {
+  padding: 15px 10px;
+  text-align: center;
+  border-bottom: 1px solid #1e293b;
+  font-size: 0.9rem;
+}
+.t-row:last-child {
+  border-bottom: none;
+}
+.win {
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+  font-weight: bold;
+}
+.bye {
+  color: #64748b;
+  font-style: italic;
+}
+
+/* تصميم النقاط (لـ 3 فرق) */
+.league-content {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+}
+.match-card {
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  padding: 15px;
+  border-radius: 12px;
+  text-align: center;
+}
+.m-teams {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+  font-weight: bold;
+  margin-bottom: 12px;
+}
+.m-btns {
+  display: flex;
+  gap: 8px;
+}
+.m-btns button {
+  flex: 1;
+  background: #22c55e;
+  border: none;
+  color: white;
+  padding: 12px 5px;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 0.8rem;
+}
+.win-tag {
+  color: #fbbf24;
+  font-weight: bold;
+  margin-top: 5px;
+}
+.done {
+  border: 1px dashed #22c55e;
+  opacity: 0.8;
+}
+
+.board-row {
+  background: #0f172a;
+  padding: 15px;
+  border-radius: 10px;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  border-right: 4px solid #1e293b;
+}
+.top {
+  border-right-color: #fbbf24;
+  background: rgba(251, 191, 36, 0.05);
+}
+.pts {
+  color: #fbbf24;
+  font-weight: bold;
+}
+
+@media (max-width: 400px) {
+  .header-nav h1 {
+    font-size: 1.2rem;
+  }
+  .m-teams {
+    font-size: 0.9rem;
+  }
+}
