@@ -53,7 +53,11 @@ const JoinPage = () => {
         didOpen: () => Swal.showLoading(),
       });
 
-      const res = await axios.post("http://localhost:5000/api/join", formData);
+      // --- التعديل هنا: استخدام رابط Railway الجديد ---
+      const res = await axios.post(
+        "https://mlbbb-production.up.railway.app/api/join",
+        formData,
+      );
 
       localStorage.setItem("token", res.data.token);
 

@@ -15,6 +15,9 @@ const WaitingPage = () => {
   const isAdminRef = useRef(localStorage.getItem("isAdmin") === "true");
   const tokenRef = useRef(localStorage.getItem("mlbb_token"));
 
+  // رابط السيرفر الموحد
+  const API_BASE_URL = "https://mlbbb-production.up.railway.app";
+
   const getPlayerDataFromToken = () => {
     try {
       if (tokenRef.current) {
@@ -29,8 +32,8 @@ const WaitingPage = () => {
   const fetchStatus = async () => {
     try {
       const [playersRes, settingsRes] = await Promise.all([
-        axios.get("http://localhost:5000/api/players"),
-        axios.get("http://localhost:5000/api/settings"),
+        axios.get(`${API_BASE_URL}/api/players`),
+        axios.get(`${API_BASE_URL}/api/settings`),
       ]);
 
       const latestPlayers = playersRes.data;
@@ -43,16 +46,13 @@ const WaitingPage = () => {
         const playerVersion = playerData.version || 0;
         const playerName = playerData.name;
 
-        // شروط الطرد النهائية (بدون استثناء لأحد)
         const isDatabaseEmpty = latestPlayers.length === 0;
         const isVersionChanged = playerVersion !== serverVersion;
         const isMyNameDeleted = !latestPlayers.some(
           (p) => p.name === playerName,
         );
 
-        // إذا تحقق أي شرط.. طرد فوري
         if (isDatabaseEmpty || isVersionChanged || isMyNameDeleted) {
-          console.log("طرد صارم: تم حذف الاسم أو تصفير البطولة");
           handleLogoutForcefully();
         }
       }
@@ -115,10 +115,9 @@ const WaitingPage = () => {
 
     if (confirm.isConfirmed) {
       try {
-        await axios.post("http://localhost:5000/api/reset", {
+        await axios.post(`${API_BASE_URL}/api/reset`, {
           secretCode: "8520085",
         });
-        // الأدمن اللي كبس الزر بنطرده يدوي عشان السرعة
         handleLogoutForcefully();
       } catch (e) {
         Swal.fire("خطأ", "فشل التصفير", "error");
@@ -128,7 +127,7 @@ const WaitingPage = () => {
 
   const addFakePlayers = async () => {
     try {
-      await axios.post("http://localhost:5000/api/seed");
+      await axios.post(`${API_BASE_URL}/api/seed`);
       fetchStatus();
     } catch (err) {
       Swal.fire("خطأ", "فشل الإضافة", "error");
@@ -137,7 +136,7 @@ const WaitingPage = () => {
 
   const deletePlayer = async (id) => {
     try {
-      await axios.delete(`http://localhost:5000/api/player/${id}`);
+      await axios.delete(`${API_BASE_URL}/api/player/${id}`);
       fetchStatus();
     } catch (err) {
       Swal.fire("خطأ", "فشل الحذف", "error");
@@ -150,7 +149,7 @@ const WaitingPage = () => {
       return;
     }
     try {
-      await axios.post("http://localhost:5000/api/toggle-reg", {
+      await axios.post(`${API_BASE_URL}/api/toggle-reg`, {
         status: false,
       });
       navigate("/teams");

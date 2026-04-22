@@ -10,18 +10,21 @@ const TeamsPage = () => {
 
   const fetchTeams = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/generate-teams");
+      // --- التعديل هنا: استخدام رابط Railway بدلاً من localhost ---
+      const res = await axios.get(
+        "https://mlbbb-production.up.railway.app/api/generate-teams",
+      );
+
       if (res.data.success) {
         setTeams(res.data.teams);
 
-        // --- خطوة مهمة جداً لصفحة الجدول ---
-        // بنحفظ الفرق في الـ LocalStorage عشان صفحة الـ Bracket تقرأهم
+        // حفظ الفرق في الـ LocalStorage عشان صفحة الـ Bracket تقرأهم
         localStorage.setItem("generatedTeams", JSON.stringify(res.data.teams));
 
         checkSecurity(res.data.teams);
       }
     } catch (err) {
-      console.error("Error fetching teams");
+      console.error("Error fetching teams:", err);
     }
   };
 
@@ -46,7 +49,7 @@ const TeamsPage = () => {
 
   useEffect(() => {
     fetchTeams();
-    // فحص دوري كل 5 ثواني للطرد في حال التصفير أو الحذف
+    // فحص دوري كل 5 ثواني للتحديث التلقائي
     const interval = setInterval(fetchTeams, 5000);
     return () => clearInterval(interval);
   }, []);
@@ -113,7 +116,6 @@ const TeamsPage = () => {
           </button>
         )}
 
-        {/* تعديل الرابط هنا ليكون /bracket في الحالتين */}
         <button
           className={isAdmin ? "btn btn-admin" : "btn btn-primary"}
           onClick={() => navigate("/bracket")}
