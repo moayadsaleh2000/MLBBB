@@ -1,54 +1,77 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import Swal from "sweetalert2";
+import "./TeamsPage.css";
 
-export default function TournamentBracket() {
-  const navigate = useNavigate();
+const TeamsPage = () => {
+  const [teams, setTeams] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [isAdmin] = useState(localStorage.getItem("isAdmin") === "true");
-  const [bracket, setBracket] = useState([]);
+  const navigate = useNavigate();
 
-  const createNewBracket = useCallback((teams) => {
-    console.log("Building new bracket for:", teams.length, "teams");
-    let firstRound = [];
-    // توزيع الفرق 2 بـ 2 بدقة
-    for (let i = 0; i < teams.length; i += 2) {
-      firstRound.push({
-        t1: teams[i].teamName,
-        t2: teams[i + 1] ? teams[i + 1].teamName : "باي",
-        winner: teams[i + 1] ? null : teams[i].teamName,
-      });
+  const API_URL = "https://mlbbb-production.up.railway.app/api";
+
+  const fetchTeams = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/generate-teams`);
+      if (res.data.success) {
+        setTeams(res.data.teams);
+        // تخزين الفرق للـ Bracket
+        localStorage.setItem("generatedTeams", JSON.stringify(res.data.teams));
+      }
+    } catch (err) {
+      console.error("فشل جلب الفرق");
+    } finally {
+      setLoading(false);
     }
-    setBracket([firstRound]);
-    localStorage.setItem("tourney_bracket", JSON.stringify([firstRound]));
-  }, []);
+  };
 
   useEffect(() => {
-    const saved = localStorage.getItem("tourney_bracket");
-    const liveTeams = JSON.parse(localStorage.getItem("generatedTeams")) || [];
+    fetchTeams(); // جلب الفرق فوراً عند الرفرش
+    const interval = setInterval(fetchTeams, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
-    if (!saved && liveTeams.length > 0) {
-      createNewBracket(liveTeams);
-    } else if (saved) {
-      setBracket(JSON.parse(saved));
+  const handleGoToBracket = () => {
+    if (isAdmin) {
+      localStorage.removeItem("tourney_bracket");
     }
-  }, [createNewBracket]);
+    navigate("/bracket");
+  };
+
+  if (loading && teams.length === 0)
+    return <div className="loader">جاري استرجاع الفرق...</div>;
 
   return (
-    <div className="bracket-page">
-      <button onClick={() => navigate("/teams")}>الرجوع للفرق</button>
-      <div className="bracket-draw">
-        {bracket.map((round, rIdx) => (
-          <div key={rIdx} className="round">
-            {round.map((match, mIdx) => (
-              <div key={mIdx} className="match">
-                <div>{match.t1}</div>
-                <span>VS</span>
-                <div>{match.t2}</div>
-              </div>
-            ))}
-          </div>
-        ))}
+    <div className="teams-page">
+      <header className="header">
+        <button onClick={() => navigate("/waiting")}>↩ عودة</button>
+        <h1>الفرق الموزعة ⚔️</h1>
+      </header>
+
+      <div className="teams-grid">
+        {teams.length > 0 ? (
+          teams.map((team, idx) => (
+            <div key={idx} className="team-card">
+              <h2>{team.teamName}</h2>
+              {team.members.map((p, i) => (
+                <div key={i} className="member">
+                  {p.name} - {p.assignedRole}
+                </div>
+              ))}
+            </div>
+          ))
+        ) : (
+          <div className="no-data">بانتظار توزيع الفرق من الإدارة...</div>
+        )}
       </div>
+
+      <footer className="footer">
+        <button className="btn-bracket" onClick={handleGoToBracket}>
+          {isAdmin ? "🏆 إنشاء جدول البطولة" : "📅 عرض الجدول"}
+        </button>
+      </footer>
     </div>
   );
-}
+};
+export default TeamsPage;
