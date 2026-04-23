@@ -8,42 +8,54 @@ const TeamsPage = () => {
   const [isAdmin] = useState(localStorage.getItem("isAdmin") === "true");
   const navigate = useNavigate();
 
+  // الرابط الأساسي للسيرفر في Railway
   const API_URL = "https://mlbbb-production.up.railway.app/api";
 
   const fetchTeams = async () => {
     try {
       const res = await axios.get(`${API_URL}/generate-teams`);
-      if (res.data.success) {
+      if (res.data.success && res.data.teams) {
         setTeams(res.data.teams);
       }
     } catch (err) {
-      console.error("فشل جلب الفرق");
+      console.error("خطأ في جلب الفرق من السيرفر");
     }
   };
 
   useEffect(() => {
     fetchTeams();
+    // تحديث تلقائي كل 5 ثواني عشان لو في تغيير تظهر فوراً
     const interval = setInterval(fetchTeams, 5000);
     return () => clearInterval(interval);
   }, []);
 
   return (
     <div className="teams-wrapper">
-      <h1 className="title">⚔️ توزيع الفرق الحالية ⚔️</h1>
+      <h1 className="title">⚔️ توزيع الفرق ⚔️</h1>
+
       <div className="teams-grid-container">
-        {teams.map((team, idx) => (
-          <div key={idx} className="team-card">
-            <h2 className="team-name">{team.teamName}</h2>
-            <div className="members-list">
-              {team.members.map((p, pIdx) => (
-                <div key={pIdx} className="player-row">
-                  {p.name} <span className="role-tag">{p.assignedRole}</span>
-                </div>
-              ))}
+        {teams.length > 0 ? (
+          teams.map((team, idx) => (
+            <div key={idx} className="team-card">
+              <h2 className="team-name">{team.teamName}</h2>
+              <div className="members-list">
+                {team.members.map((p, pIdx) => (
+                  <div key={pIdx} className="player-row">
+                    {/* عرض الاسم واللين فقط كما طلبت */}
+                    <span className="p-name">{p.name}</span>
+                    <span className="role-tag">{p.assignedRole}</span>
+                  </div>
+                ))}
+              </div>
             </div>
+          ))
+        ) : (
+          <div className="no-data">
+            <p>بانتظار توزيع الفرق من قبل المسؤول...</p>
           </div>
-        ))}
+        )}
       </div>
+
       <footer className="teams-footer">
         <button
           className="btn btn-secondary"
