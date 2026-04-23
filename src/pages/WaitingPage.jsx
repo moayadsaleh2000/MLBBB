@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
@@ -35,38 +35,97 @@ const WaitingPage = () => {
         axios.get(`${API_BASE_URL}/api/settings`),
       ]);
 
-      const latestPlayers = playersRes.data;
+      setPlayers(playersRes.data);
       const serverVersion = settingsRes.data.version || 0;
-      setPlayers(latestPlayers);
-
       const playerData = getPlayerDataFromToken(currentToken);
 
-      if (playerData) {
-        const playerVersion = playerData.version || 0;
-
-        // --- الحل الجذري: الطرد فقط إذا تم تصفير البطولة (تغير الـ Version) ---
-        // لغينا شرط حذف الاسم عشان ما تنطرد بالخطأ بسبب سرعة النت
-        if (playerVersion !== serverVersion) {
-          console.log("تم تصفير البطولة، جاري تسجيل الخروج...");
-          handleLogoutForcefully();
-        }
+      if (playerData && playerData.version !== serverVersion) {
+        handleLogoutForcefully();
       }
     } catch (err) {
-      console.error("Connection Error - Waiting for server...");
+      console.error("Connection Error...");
     }
   };
 
   const handleLogoutForcefully = () => {
-    if (window.statusInterval) clearInterval(window.statusInterval);
-    localStorage.removeItem("token"); // نحذف التوكين فقط
+    localStorage.clear();
     window.location.href = "/";
   };
 
   useEffect(() => {
     fetchStatus();
     const interval = setInterval(fetchStatus, 3000);
-    return () => clearInterval(interval);
+
+    // منع التحميل العشوائي
+    const handleBeforeUnload = (e) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
   }, []);
+
+  // --- حذف لاعب (سريع جداً) ---
+  const deletePlayer = async (id) => {
+    // حذف فوري من الشاشة قبل السيرفر
+    const originalPlayers = [...players];
+    setPlayers(players.filter((p) => p._id !== id));
+
+    try {
+      await axios.delete(`${API_BASE_URL}/api/player/${id}`);
+    } catch (err) {
+      setPlayers(originalPlayers); // ترجيع اللاعب لو فشل السيرفر
+      Swal.fire("خطأ", "لم يتم الحذف من السيرفر", "error");
+    }
+  };
+
+  // --- إضافة بوتات مع لودينج خفيف ---
+  const addFakePlayers = async () => {
+    Swal.fire({
+      title: "جاري إضافة البوتات...",
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading();
+      },
+    });
+
+    try {
+      await axios.post(`${API_BASE_URL}/api/seed`);
+      await fetchStatus();
+      Swal.close();
+    } catch (err) {
+      Swal.fire("خطأ", "فشل إضافة البوتات", "error");
+    }
+  };
+
+  // --- تصفير شامل للمتصفح والسيرفر ---
+  const handleReset = async () => {
+    const confirm = await Swal.fire({
+      title: "تصفير البطولة؟",
+      text: "سيتم حذف الجميع ومسح بيانات جهازك بالكامل!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#ef4444",
+      confirmButtonText: "نعم، تصفير شامل",
+      cancelButtonText: "إلغاء",
+    });
+
+    if (confirm.isConfirmed) {
+      try {
+        await axios.post(`${API_BASE_URL}/api/reset`, {
+          secretCode: "8520085",
+        });
+        localStorage.clear(); // مسح شامل للـ LocalStorage
+        window.location.href = "/";
+      } catch (e) {
+        Swal.fire("خطأ", "فشل التصفير", "error");
+      }
+    }
+  };
 
   const handleAdminTitleClick = async () => {
     const newCount = adminClickCount + 1;
@@ -92,46 +151,6 @@ const WaitingPage = () => {
       }
     } else {
       setAdminClickCount(newCount);
-    }
-  };
-
-  const handleReset = async () => {
-    const confirm = await Swal.fire({
-      title: "تصفير البطولة؟",
-      text: "سيتم حذف الجميع وتغيير نسخة البطولة!",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#ef4444",
-      confirmButtonText: "نعم، تصفير",
-    });
-
-    if (confirm.isConfirmed) {
-      try {
-        await axios.post(`${API_BASE_URL}/api/reset`, {
-          secretCode: "8520085",
-        });
-        handleLogoutForcefully();
-      } catch (e) {
-        Swal.fire("خطأ", "فشل التصفير", "error");
-      }
-    }
-  };
-
-  const addFakePlayers = async () => {
-    try {
-      await axios.post(`${API_BASE_URL}/api/seed`);
-      fetchStatus();
-    } catch (err) {
-      Swal.fire("خطأ", "فشل الإضافة", "error");
-    }
-  };
-
-  const deletePlayer = async (id) => {
-    try {
-      await axios.delete(`${API_BASE_URL}/api/player/${id}`);
-      fetchStatus();
-    } catch (err) {
-      Swal.fire("خطأ", "فشل الحذف", "error");
     }
   };
 

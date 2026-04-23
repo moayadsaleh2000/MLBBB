@@ -1,144 +1,54 @@
-import React, { useState, useEffect } from "react";
-import axios from "axios";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import "./TeamsPage.css";
+import Swal from "sweetalert2";
 
-const TeamsPage = () => {
-  const [teams, setTeams] = useState([]);
-  const [isAdmin] = useState(localStorage.getItem("isAdmin") === "true");
+export default function TournamentBracket() {
   const navigate = useNavigate();
+  const [isAdmin] = useState(localStorage.getItem("isAdmin") === "true");
+  const [bracket, setBracket] = useState([]);
 
-  // 1. جلب الفرق (GET) - لجلب البيانات المخزنة مسبقاً في الداتا بيز
-  const fetchTeams = async () => {
-    try {
-      const res = await axios.get(
-        "https://mlbbb-production.up.railway.app/api/generate-teams",
-      );
-
-      if (res.data.success) {
-        setTeams(res.data.teams);
-        // حفظ الفرق في الـ LocalStorage لصفحة الـ Bracket
-        localStorage.setItem("generatedTeams", JSON.stringify(res.data.teams));
-        checkSecurity(res.data.teams);
-      }
-    } catch (err) {
-      console.error("Error fetching teams:", err);
+  const createNewBracket = useCallback((teams) => {
+    console.log("Building new bracket for:", teams.length, "teams");
+    let firstRound = [];
+    // توزيع الفرق 2 بـ 2 بدقة
+    for (let i = 0; i < teams.length; i += 2) {
+      firstRound.push({
+        t1: teams[i].teamName,
+        t2: teams[i + 1] ? teams[i + 1].teamName : "باي",
+        winner: teams[i + 1] ? null : teams[i].teamName,
+      });
     }
-  };
-
-  // 2. دالة إعادة التشكيل (POST) - للأدمن فقط لعمل خلط جديد وحفظه
-  const handleReshuffle = async () => {
-    try {
-      const res = await axios.post(
-        "https://mlbbb-production.up.railway.app/api/shuffle-teams",
-      );
-      if (res.data.success) {
-        setTeams(res.data.teams);
-        alert("تم إعادة تشكيل الفرق وحفظها بنجاح! ⚔️");
-      }
-    } catch (err) {
-      console.error("Error reshuffling teams:", err);
-      alert("فشل إعادة التشكيل. تأكد من وجود عدد كافٍ من اللاعبين.");
-    }
-  };
-
-  // فحص إذا كان اللاعب لا يزال موجوداً (للطرد التلقائي في حال تم حذفه)
-  const checkSecurity = (allTeams) => {
-    if (isAdmin) return;
-    const myName = localStorage.getItem("playerName");
-    const allPlayersInTeams = allTeams.flatMap((t) =>
-      t.members.map((m) => m.name),
-    );
-
-    if (allPlayersInTeams.length === 0 || !allPlayersInTeams.includes(myName)) {
-      handleLogout();
-    }
-  };
-
-  const handleLogout = () => {
-    localStorage.clear();
-    navigate("/");
-  };
-
-  useEffect(() => {
-    fetchTeams();
-    // فحص دوري كل 5 ثواني لجلب النسخة الثابتة من السيرفر
-    const interval = setInterval(fetchTeams, 5000);
-    return () => clearInterval(interval);
+    setBracket([firstRound]);
+    localStorage.setItem("tourney_bracket", JSON.stringify([firstRound]));
   }, []);
 
-  const getEmoji = (role) => {
-    const emojis = {
-      Jungle: "⚔️",
-      "Gold Lane": "💰",
-      "EXP Lane": "🛡️",
-      "Mid Lane": "🧙",
-      Roam: "👣",
-    };
-    return emojis[role] || "👤";
-  };
+  useEffect(() => {
+    const saved = localStorage.getItem("tourney_bracket");
+    const liveTeams = JSON.parse(localStorage.getItem("generatedTeams")) || [];
+
+    if (!saved && liveTeams.length > 0) {
+      createNewBracket(liveTeams);
+    } else if (saved) {
+      setBracket(JSON.parse(saved));
+    }
+  }, [createNewBracket]);
 
   return (
-    <div className="teams-wrapper">
-      <h1 className="title">⚔️ توزيع الفرق والمسارات ⚔️</h1>
-
-      <div className="teams-grid-container">
-        {teams.length > 0 ? (
-          teams.map((team, idx) => (
-            <div key={idx} className="team-card">
-              <h2 className="team-name">{team.teamName}</h2>
-              <table className="players-table">
-                <thead>
-                  <tr>
-                    <th>اللاعب</th>
-                    <th>المسار</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {team.members.map((p, pIdx) => (
-                    <tr key={pIdx}>
-                      <td className="p-name">{p.name}</td>
-                      <td className="p-role">
-                        {getEmoji(p.assignedRole)} {p.assignedRole}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ))
-        ) : (
-          <div className="empty-loading">
-            <p>بانتظار توزيع الفرق...</p>
-            <div className="spinner"></div>
+    <div className="bracket-page">
+      <button onClick={() => navigate("/teams")}>الرجوع للفرق</button>
+      <div className="bracket-draw">
+        {bracket.map((round, rIdx) => (
+          <div key={rIdx} className="round">
+            {round.map((match, mIdx) => (
+              <div key={mIdx} className="match">
+                <div>{match.t1}</div>
+                <span>VS</span>
+                <div>{match.t2}</div>
+              </div>
+            ))}
           </div>
-        )}
+        ))}
       </div>
-
-      <footer className="teams-footer">
-        <button
-          className="btn btn-secondary"
-          onClick={() => navigate("/waiting")}
-        >
-          ↩️ عودة
-        </button>
-
-        {/* زر الأدمن ينادي handleReshuffle (POST) */}
-        {isAdmin && (
-          <button className="btn btn-warning" onClick={handleReshuffle}>
-            🔄 إعادة التشكيل
-          </button>
-        )}
-
-        <button
-          className={isAdmin ? "btn btn-admin" : "btn btn-primary"}
-          onClick={() => navigate("/bracket")}
-        >
-          {isAdmin ? "🏆 إنشاء وإدارة الجدول" : "📅 عرض الجدول"}
-        </button>
-      </footer>
     </div>
   );
-};
-
-export default TeamsPage;
+}
