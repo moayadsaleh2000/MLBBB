@@ -38,6 +38,37 @@ const WaitingPage = () => {
     }
   };
 
+  const deletePlayer = async (id) => {
+    try {
+      await axios.delete(`${API_BASE_URL}/api/player/${id}`);
+      fetchStatus();
+    } catch (err) {
+      Swal.fire("خطأ", "فشل الحذف", "error");
+    }
+  };
+
+  const handleReset = async () => {
+    const confirm = await Swal.fire({
+      title: "تصفير البطولة؟",
+      text: "سيتم حذف الجميع ومسح البيانات!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "نعم، تصفير",
+    });
+
+    if (confirm.isConfirmed) {
+      try {
+        await axios.post(`${API_BASE_URL}/api/reset`, {
+          secretCode: "8520085",
+        });
+        localStorage.clear();
+        window.location.href = "/";
+      } catch (e) {
+        Swal.fire("خطأ", "فشل التصفير", "error");
+      }
+    }
+  };
+
   const handleAdminTitleClick = () => {
     const newCount = adminClickCount + 1;
     if (newCount >= 5) {
@@ -52,7 +83,7 @@ const WaitingPage = () => {
           localStorage.setItem("isAdmin", "true");
           Swal.fire({
             icon: "success",
-            title: "أهلاً بك يا أدمن",
+            title: "أهلاً يا أدمن",
             timer: 1000,
             showConfirmButton: false,
           });
@@ -65,80 +96,71 @@ const WaitingPage = () => {
 
   const startTournament = async () => {
     if (players.length < 10) {
-      Swal.fire("عفواً", "لازم 10 لاعبين على الأقل للبدء", "warning");
+      Swal.fire("عفواً", "لازم 10 لاعبين على الأقل", "warning");
       return;
     }
     try {
       await axios.post(`${API_BASE_URL}/api/toggle-reg`, { status: false });
       navigate("/teams");
     } catch (err) {
-      Swal.fire("خطأ", "فشل بدء البطولة", "error");
+      Swal.fire("خطأ", "فشل البدء", "error");
     }
   };
-
-  const completedTeams = Math.floor(players.length / 5);
-  const canStart = players.length >= 10;
 
   return (
     <div className="waiting-wrapper">
       <div className="waiting-card">
         <header className="card-header">
-          <h1
-            className="main-title"
-            onClick={handleAdminTitleClick}
-            style={{ cursor: "pointer" }}
-          >
+          <h1 className="main-title" onClick={handleAdminTitleClick}>
             MLBB <span className="highlight">ARENA</span>
           </h1>
           <div className="status-container">
-            <div className={`status-badge ${canStart ? "ready" : ""}`}>
-              المسجلون: {players.length}
-            </div>
-            <div className="teams-info">{completedTeams} فرق جاهزة 🛡️</div>
+            <div className="status-badge">المسجلون: {players.length}</div>
           </div>
         </header>
 
         <div className="players-scroll-area">
-          {players.length > 0 ? (
-            <div className="players-grid">
-              {players.map((player, index) => (
-                <div key={player._id} className="player-item">
-                  <div className="player-info">
-                    <span className="rank-num">#{index + 1}</span>
-                    <div className="name-box">
-                      <span className="p-name">{player.name}</span>
-                      <span className="p-role">{player.primaryRole}</span>
-                    </div>
+          <div className="players-grid">
+            {players.map((p, i) => (
+              <div key={p._id} className="player-item">
+                <div className="player-info">
+                  <span className="rank-num">#{i + 1}</span>
+                  <div className="name-box">
+                    <span className="p-name">{p.name}</span>
+                    <span className="p-role">{p.primaryRole}</span>
                   </div>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="empty-state">بانتظار دخول الأساطير...</div>
-          )}
+                {isAdminState && (
+                  <button
+                    className="delete-icon"
+                    onClick={() => deletePlayer(p._id)}
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
 
         <footer className="action-area">
           {isAdminState ? (
             <div className="admin-controls">
-              <button
-                className={`btn-main ${!canStart ? "disabled" : ""}`}
-                onClick={startTournament}
-              >
-                🚀 توزيع {completedTeams} فرق والبدء
+              <button className="btn-main" onClick={startTournament}>
+                🚀 توزيع والبدء
               </button>
-              <button className="btn-sec" onClick={addFakePlayers}>
-                🤖 +5 بوتات
-              </button>
+              <div className="secondary-btns">
+                <button className="btn-sec" onClick={addFakePlayers}>
+                  🤖 +5 بوتات
+                </button>
+                <button className="btn-danger" onClick={handleReset}>
+                  🗑️ تصفير
+                </button>
+              </div>
             </div>
           ) : (
-            <button
-              className={`btn-main ${!canStart ? "disabled" : ""}`}
-              onClick={() => navigate("/teams")}
-            >
-              {canStart
-                ? `عرض الفرق (${completedTeams}) ⚔️`
-                : `بانتظار اكتمال فريقين (10 لاعبين)`}
+            <button className="btn-main" onClick={() => navigate("/teams")}>
+              عرض الفرق
             </button>
           )}
         </footer>
@@ -146,5 +168,4 @@ const WaitingPage = () => {
     </div>
   );
 };
-
 export default WaitingPage;
