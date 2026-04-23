@@ -12,81 +12,28 @@ const WaitingPage = () => {
   const [adminClickCount, setAdminClickCount] = useState(0);
   const navigate = useNavigate();
 
+  // تأكد إن الرابط هو رابط الـ API تبعك في Railway
   const API_BASE_URL = "https://mlbbb-production.up.railway.app";
-
-  const getPlayerDataFromToken = (currentToken) => {
-    try {
-      if (currentToken) {
-        return JSON.parse(atob(currentToken.split(".")[1]));
-      }
-    } catch (e) {
-      return null;
-    }
-    return null;
-  };
 
   const fetchStatus = async () => {
     try {
-      const currentToken = localStorage.getItem("token");
-      if (!currentToken) return;
-
-      const [playersRes, settingsRes] = await Promise.all([
-        axios.get(`${API_BASE_URL}/api/players`),
-        axios.get(`${API_BASE_URL}/api/settings`),
-      ]);
-
-      setPlayers(playersRes.data);
-      const serverVersion = settingsRes.data.version || 0;
-      const playerData = getPlayerDataFromToken(currentToken);
-
-      if (playerData && playerData.version !== serverVersion) {
-        handleLogoutForcefully();
-      }
+      const res = await axios.get(`${API_BASE_URL}/api/players`);
+      setPlayers(res.data);
     } catch (err) {
-      console.error("Connection Error...");
+      console.error("Connection Error to Railway...");
     }
-  };
-
-  const handleLogoutForcefully = () => {
-    localStorage.clear();
-    window.location.href = "/";
   };
 
   useEffect(() => {
     fetchStatus();
-    const interval = setInterval(fetchStatus, 3000);
-
-    // منع التحميل العشوائي
-    const handleBeforeUnload = (e) => {
-      e.preventDefault();
-      e.returnValue = "";
-    };
-    window.addEventListener("beforeunload", handleBeforeUnload);
-
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-    };
+    const interval = setInterval(fetchStatus, 3000); // تحديث القائمة كل 3 ثواني
+    return () => clearInterval(interval);
   }, []);
 
-  // --- حذف لاعب (سريع جداً) ---
-  const deletePlayer = async (id) => {
-    // حذف فوري من الشاشة قبل السيرفر
-    const originalPlayers = [...players];
-    setPlayers(players.filter((p) => p._id !== id));
-
-    try {
-      await axios.delete(`${API_BASE_URL}/api/player/${id}`);
-    } catch (err) {
-      setPlayers(originalPlayers); // ترجيع اللاعب لو فشل السيرفر
-      Swal.fire("خطأ", "لم يتم الحذف من السيرفر", "error");
-    }
-  };
-
-  // --- إضافة بوتات مع لودينج خفيف ---
+  // --- إضافة البوتات (بدون تعليق) ---
   const addFakePlayers = async () => {
     Swal.fire({
-      title: "جاري إضافة البوتات...",
+      title: "جاري إضافة المحاربين...",
       allowOutsideClick: false,
       didOpen: () => {
         Swal.showLoading();
@@ -95,23 +42,32 @@ const WaitingPage = () => {
 
     try {
       await axios.post(`${API_BASE_URL}/api/seed`);
-      await fetchStatus();
+      await fetchStatus(); // تحديث القائمة فوراً بعد الإضافة
       Swal.close();
     } catch (err) {
-      Swal.fire("خطأ", "فشل إضافة البوتات", "error");
+      console.error("API Error:", err);
+      Swal.fire("خطأ", "السيرفر ما استجاب، تأكد إن Railway شغال", "error");
     }
   };
 
-  // --- تصفير شامل للمتصفح والسيرفر ---
+  // --- حذف لاعب ---
+  const deletePlayer = async (id) => {
+    try {
+      await axios.delete(`${API_BASE_URL}/api/player/${id}`);
+      setPlayers(players.filter((p) => p._id !== id));
+    } catch (err) {
+      Swal.fire("خطأ", "فشل حذف اللاعب", "error");
+    }
+  };
+
+  // --- تصفير البطولة ---
   const handleReset = async () => {
     const confirm = await Swal.fire({
       title: "تصفير البطولة؟",
-      text: "سيتم حذف الجميع ومسح بيانات جهازك بالكامل!",
+      text: "سيتم حذف الجميع ومسح البيانات!",
       icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: "#ef4444",
-      confirmButtonText: "نعم، تصفير شامل",
-      cancelButtonText: "إلغاء",
+      confirmButtonText: "نعم، تصفير",
     });
 
     if (confirm.isConfirmed) {
@@ -119,7 +75,7 @@ const WaitingPage = () => {
         await axios.post(`${API_BASE_URL}/api/reset`, {
           secretCode: "8520085",
         });
-        localStorage.clear(); // مسح شامل للـ LocalStorage
+        localStorage.clear();
         window.location.href = "/";
       } catch (e) {
         Swal.fire("خطأ", "فشل التصفير", "error");
@@ -127,6 +83,7 @@ const WaitingPage = () => {
     }
   };
 
+  // --- تفعيل وضع الأدمن بالضغط 5 مرات على العنوان ---
   const handleAdminTitleClick = async () => {
     const newCount = adminClickCount + 1;
     if (newCount >= 5) {
@@ -135,16 +92,13 @@ const WaitingPage = () => {
         title: "دخول الإدارة",
         input: "password",
         inputPlaceholder: "الرمز السري",
-        background: "#0f172a",
-        color: "#fff",
-        confirmButtonColor: "#3b82f6",
       });
       if (code === "8520085") {
         setIsAdminState(true);
         localStorage.setItem("isAdmin", "true");
         Swal.fire({
           icon: "success",
-          title: "وضع الأدمن نشط",
+          title: "أهلاً بك يا أدمن",
           timer: 1000,
           showConfirmButton: false,
         });
@@ -156,14 +110,14 @@ const WaitingPage = () => {
 
   const startTournament = async () => {
     if (players.length < 10) {
-      Swal.fire("عفواً", "نحتاج 10 لاعبين", "warning");
+      Swal.fire("عفواً", "لازم 10 لاعبين على الأقل للبدء", "warning");
       return;
     }
     try {
       await axios.post(`${API_BASE_URL}/api/toggle-reg`, { status: false });
       navigate("/teams");
     } catch (err) {
-      Swal.fire("خطأ", "فشل البدء", "error");
+      Swal.fire("خطأ", "فشل بدء البطولة", "error");
     }
   };
 
@@ -194,10 +148,7 @@ const WaitingPage = () => {
           {players.length > 0 ? (
             <div className="players-grid">
               {players.map((player, index) => (
-                <div
-                  key={player._id}
-                  className={`player-item ${index < completedTeams * 5 ? "in-team" : ""}`}
-                >
+                <div key={player._id} className="player-item">
                   <div className="player-info">
                     <span className="rank-num">#{index + 1}</span>
                     <div className="name-box">
@@ -217,7 +168,7 @@ const WaitingPage = () => {
               ))}
             </div>
           ) : (
-            <div className="empty-state">بانتظار دخول المحاربين...</div>
+            <div className="empty-state">بانتظار دخول الأساطير...</div>
           )}
         </div>
 
@@ -225,7 +176,7 @@ const WaitingPage = () => {
           {isAdminState ? (
             <div className="admin-controls">
               <button
-                className={`btn-main ${!canStart ? "disabled" : "pulse"}`}
+                className={`btn-main ${!canStart ? "disabled" : ""}`}
                 onClick={startTournament}
               >
                 🚀 توزيع {completedTeams} فرق والبدء
