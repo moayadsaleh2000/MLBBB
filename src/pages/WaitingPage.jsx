@@ -29,15 +29,33 @@ const WaitingPage = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const addFakePlayers = async () => {
+  const startTournament = async () => {
+    if (players.length < 10) {
+      Swal.fire("عفواً", "لازم 10 لاعبين على الأقل", "warning");
+      return;
+    }
     try {
-      await axios.post(`${API_BASE_URL}/api/seed`);
-      fetchStatus();
+      Swal.fire({
+        title: "جاري توزيع الفرق...",
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        },
+      });
+
+      // 1. التوزيع في السيرفر (الحل اللولبي)
+      await axios.post(`${API_BASE_URL}/api/shuffle-teams`);
+      // 2. قفل التسجيل
+      await axios.post(`${API_BASE_URL}/api/toggle-reg`, { status: false });
+
+      Swal.close();
+      navigate("/teams"); // الانتقال والبيانات جاهزة
     } catch (err) {
-      Swal.fire("خطأ", "فشل إضافة البوتات", "error");
+      Swal.fire("خطأ", "فشل التوزيع، تأكد من السيرفر", "error");
     }
   };
 
+  // باقي الدوال (delete, reset, handleAdminTitleClick) تبقى كما هي عندك تماماً
   const deletePlayer = async (id) => {
     try {
       await axios.delete(`${API_BASE_URL}/api/player/${id}`);
@@ -50,12 +68,10 @@ const WaitingPage = () => {
   const handleReset = async () => {
     const confirm = await Swal.fire({
       title: "تصفير البطولة؟",
-      text: "سيتم حذف الجميع ومسح البيانات!",
+      text: "سيتم حذف الجميع!",
       icon: "warning",
       showCancelButton: true,
-      confirmButtonText: "نعم، تصفير",
     });
-
     if (confirm.isConfirmed) {
       try {
         await axios.post(`${API_BASE_URL}/api/reset`, {
@@ -73,37 +89,16 @@ const WaitingPage = () => {
     const newCount = adminClickCount + 1;
     if (newCount >= 5) {
       setAdminClickCount(0);
-      Swal.fire({
-        title: "دخول الإدارة",
-        input: "password",
-        inputPlaceholder: "الرمز السري",
-      }).then(({ value: code }) => {
-        if (code === "8520085") {
-          setIsAdminState(true);
-          localStorage.setItem("isAdmin", "true");
-          Swal.fire({
-            icon: "success",
-            title: "أهلاً يا أدمن",
-            timer: 1000,
-            showConfirmButton: false,
-          });
-        }
-      });
+      Swal.fire({ title: "دخول الإدارة", input: "password" }).then(
+        ({ value: code }) => {
+          if (code === "8520085") {
+            setIsAdminState(true);
+            localStorage.setItem("isAdmin", "true");
+          }
+        },
+      );
     } else {
       setAdminClickCount(newCount);
-    }
-  };
-
-  const startTournament = async () => {
-    if (players.length < 10) {
-      Swal.fire("عفواً", "لازم 10 لاعبين على الأقل", "warning");
-      return;
-    }
-    try {
-      await axios.post(`${API_BASE_URL}/api/toggle-reg`, { status: false });
-      navigate("/teams");
-    } catch (err) {
-      Swal.fire("خطأ", "فشل البدء", "error");
     }
   };
 
@@ -114,11 +109,8 @@ const WaitingPage = () => {
           <h1 className="main-title" onClick={handleAdminTitleClick}>
             MLBB <span className="highlight">ARENA</span>
           </h1>
-          <div className="status-container">
-            <div className="status-badge">المسجلون: {players.length}</div>
-          </div>
+          <div className="status-badge">المسجلون: {players.length}</div>
         </header>
-
         <div className="players-scroll-area">
           <div className="players-grid">
             {players.map((p, i) => (
@@ -142,7 +134,6 @@ const WaitingPage = () => {
             ))}
           </div>
         </div>
-
         <footer className="action-area">
           {isAdminState ? (
             <div className="admin-controls">
@@ -150,7 +141,13 @@ const WaitingPage = () => {
                 🚀 توزيع والبدء
               </button>
               <div className="secondary-btns">
-                <button className="btn-sec" onClick={addFakePlayers}>
+                <button
+                  className="btn-sec"
+                  onClick={async () => {
+                    await axios.post(`${API_BASE_URL}/api/seed`);
+                    fetchStatus();
+                  }}
+                >
                   🤖 +5 بوتات
                 </button>
                 <button className="btn-danger" onClick={handleReset}>

@@ -13,7 +13,7 @@ module.exports = (db) => {
     playerController.getAllPlayers(db, req, res),
   );
 
-  // 3. جلب الإعدادات (حالة التسجيل والفرق)
+  // 3. جلب الإعدادات (حالة التسجيل والنسخة)
   router.get("/settings", (req, res) =>
     playerController.getSettings(db, req, res),
   );
@@ -36,18 +36,31 @@ module.exports = (db) => {
     playerController.toggleRegistration(db, req, res),
   );
 
-  // --- التعديل هنا (8 & 9) ---
-
-  // 8. عرض الفرق المخزنة (ثابت - للاعبين والـ Interval)
-  // هاد المسار اللي صفحة الأفرقة رح تناديه كل 5 ثواني
+  // 8. عرض الفرق المخزنة (التي تم توليدها في الكاش)
   router.get("/generate-teams", (req, res) =>
     playerController.getTeams(db, req, res),
   );
 
-  // 9. توليد وحفظ فرق جديدة (للأدمن فقط)
-  // هاد المسار يتم مناداته فقط عند الضغط على زر "إعادة التشكيل"
+  // 9. توليد وحفظ فرق جديدة (إعادة الخلط)
   router.post("/shuffle-teams", (req, res) =>
     playerController.shuffleAndSaveTeams(db, req, res),
+  );
+
+  // --- مسارات نظام البطولة والمباريات ---
+
+  // 10. جلب كل المباريات (لعرضها في صفحة الـ Bracket)
+  router.get("/matches", (req, res) =>
+    playerController.getAllMatches(db, req, res),
+  );
+
+  // 11. توليد وحفظ جدول مباريات جديد (المسار اللي كان يعطي 404)
+  router.post("/matches/generate", (req, res) =>
+    playerController.generateMatches(db, req, res),
+  );
+
+  // 12. تحديث فائز في مباراة معينة
+  router.put("/matches/:id", (req, res) =>
+    playerController.updateMatchWinner(db, req, res),
   );
 
   return router;

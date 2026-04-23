@@ -7,15 +7,13 @@ const TeamsPage = () => {
   const [teams, setTeams] = useState([]);
   const [isAdmin] = useState(localStorage.getItem("isAdmin") === "true");
   const navigate = useNavigate();
-
-  const API_URL = "https://mlbbb-production.up.railway.app/api";
+  const API_BASE_URL = "https://mlbbb-production.up.railway.app";
 
   const fetchTeams = async () => {
     try {
-      const res = await axios.get(`${API_URL}/generate-teams`);
-      if (res.data.success && res.data.teams) {
-        setTeams(res.data.teams);
-      }
+      const res = await axios.get(`${API_BASE_URL}/api/generate-teams`);
+      const data = res.data.teams || res.data;
+      if (Array.isArray(data)) setTeams(data);
     } catch (err) {
       console.error("خطأ في جلب الفرق");
     }
@@ -27,21 +25,9 @@ const TeamsPage = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // المنطق الجديد للزر
-  const handleBracketNavigation = () => {
-    if (isAdmin) {
-      // إذا أدمن: امسح القديم وخزن الفرق الحالية للبدء من جديد
-      localStorage.removeItem("tourney_bracket");
-      localStorage.setItem("generatedTeams", JSON.stringify(teams));
-    }
-    // في كل الحالات (أدمن أو لاعب) ننتقل لصفحة الشجرة
-    navigate("/bracket");
-  };
-
   return (
     <div className="teams-wrapper">
       <h1 className="title">⚔️ توزيع الفرق الحالية ⚔️</h1>
-
       <div className="teams-grid-container">
         {teams.length > 0 ? (
           teams.map((team, idx) => (
@@ -59,11 +45,10 @@ const TeamsPage = () => {
           ))
         ) : (
           <div className="no-data">
-            <p>بانتظار توزيع الفرق من المسؤول...</p>
+            <p>بانتظار توزيع الفرق...</p>
           </div>
         )}
       </div>
-
       <footer className="teams-footer">
         <button
           className="btn btn-secondary"
@@ -71,13 +56,11 @@ const TeamsPage = () => {
         >
           ↩ رجوع
         </button>
-
-        <button className="btn btn-admin" onClick={handleBracketNavigation}>
+        <button className="btn btn-admin" onClick={() => navigate("/bracket")}>
           {isAdmin ? "🏆 إنشاء وشغل الشجرة" : "🏆 مشاهدة النتائج"}
         </button>
       </footer>
     </div>
   );
 };
-
 export default TeamsPage;

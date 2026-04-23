@@ -1,88 +1,88 @@
+:root {
+  --primary-gold: #ffcc00;
+  --dark-bg: #0b0e16;
+  --card-bg: #151a26;
+  --vs-red: #f44336;
+}
+
 .tournament-page {
+  background-color: var(--dark-bg);
   min-height: 100vh;
-  background: #0f172a;
-  color: white;
   padding: 20px;
+  color: white;
   direction: rtl;
 }
 
-.header {
+.header-nav {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  border-bottom: 1px solid #333;
+  padding-bottom: 15px;
   margin-bottom: 30px;
 }
 
-/* حاوية الشجرة - أهم جزء للموبايل */
-.bracket-container {
-  display: flex;
-  gap: 40px;
-  overflow-x: auto; /* يسمح بالسحب لليمين واليسار في الموبايل */
-  padding: 20px 10px;
-  padding-bottom: 50px;
+.title {
+  color: var(--primary-gold);
+  font-size: 1.5rem;
 }
 
-/* لإخفاء شريط السكرول المزعج وشكله يكون أنيق */
-.bracket-container::-webkit-scrollbar {
-  height: 6px;
-}
-.bracket-container::-webkit-scrollbar-thumb {
-  background: #3b82f6;
-  border-radius: 10px;
-}
-
-.round-col {
-  min-width: 250px; /* عرض ثابت لكل جولة لضمان التنسيق */
-  display: flex;
-  flex-direction: column;
+.matches-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 20px;
-  justify-content: space-around;
 }
 
 .match-card {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  border-radius: 12px;
-  padding: 10px;
+  background: var(--card-bg);
+  border: 1px solid #222;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.match-teams {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .team-box {
+  flex: 1;
   padding: 12px;
+  background: #1e2533;
   text-align: center;
-  background: rgba(255, 255, 255, 0.03);
-  margin: 5px 0;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: 0.3s;
-}
-
-.team-box.winner {
-  background: #10b981 !important;
-  color: white;
+  border-radius: 6px;
   font-weight: bold;
 }
 
-.vs-divider {
-  text-align: center;
+.team-box.win {
+  color: var(--primary-gold);
+  border: 1px solid var(--primary-gold);
+}
+
+.vs-circle {
+  margin: 0 10px;
+  background: var(--vs-red);
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 0.7rem;
-  color: #64748b;
-  margin: 2px 0;
+  font-weight: bold;
 }
 
-.btn-back {
-  background: #334155;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 8px;
-  cursor: pointer;
+.winner-label {
+  margin-top: 15px;
+  text-align: center;
+  color: var(--primary-gold);
+  font-size: 0.9rem;
 }
 
-@media (max-width: 600px) {
-  .header h1 {
-    font-size: 1.2rem;
-  }
-  .round-col {
-    min-width: 200px;
-  }
+.loading {
+  text-align: center;
+  margin-top: 50px;
+  color: var(--primary-gold);
 }
