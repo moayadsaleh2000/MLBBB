@@ -13,7 +13,7 @@ const JoinPage = () => {
     secondaryRole: "",
   });
 
-  // الفحص عند فتح الصفحة: إذا مسجل روح على الـ Waiting
+  // فحص التوكن عند التحميل لمنع إعادة التسجيل
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
@@ -43,37 +43,48 @@ const JoinPage = () => {
 
   const handleJoin = async (e) => {
     e.preventDefault();
+
+    // التحقق من المدخلات
     if (!formData.name.trim() || formData.name.length < 3)
-      return fireAlert("تنبيه", "الاسم قصير!", "warning");
+      return fireAlert(
+        "تنبيه",
+        "الاسم يجب أن يكون 3 حروف على الأقل!",
+        "warning",
+      );
     if (!formData.rank || !formData.primaryRole || !formData.secondaryRole)
-      return fireAlert("تنبيه", "أكمل الحقول", "info");
+      return fireAlert("تنبيه", "يرجى تعبئة جميع الخيارات", "info");
     if (formData.primaryRole === formData.secondaryRole)
-      return fireAlert("خطأ", "الدور مكرر", "error");
+      return fireAlert("خطأ", "لا يمكن اختيار نفس الدور مرتين", "error");
 
     try {
       Swal.fire({
-        title: "جاري التسجيل...",
+        title: "جاري إرسال البيانات...",
+        allowOutsideClick: false,
         didOpen: () => Swal.showLoading(),
       });
+
+      // الرابط الخاص بـ Railway
       const res = await axios.post(
         "https://mlbbb-production.up.railway.app/api/join",
         formData,
       );
 
-      // تخزين التوكين بالاسم الموحد "token"
+      // تخزين التوكن
       localStorage.setItem("token", res.data.token);
 
       Swal.fire({
         icon: "success",
-        title: "تم التسجيل!",
-        timer: 2000,
+        title: "تم الانضمام للبطولة!",
+        text: "بالتوفيق في المنافسة",
+        timer: 1500,
         showConfirmButton: false,
       });
-      setTimeout(() => navigate("/waiting"), 2000);
+
+      setTimeout(() => navigate("/waiting"), 1500);
     } catch (err) {
       fireAlert(
-        "فشل التسجيل",
-        err.response?.data?.message || "خطأ سيرفر",
+        "فشل في التسجيل",
+        err.response?.data?.message || "حدث خطأ في الاتصال بالسيرفر",
         "error",
       );
     }
@@ -82,12 +93,17 @@ const JoinPage = () => {
   return (
     <div className="join-container">
       <div className="join-card">
-        <h1 className="join-title">MVP Tournament</h1>
+        <h1 className="join-title">
+          <span className="mvp-glow">MVP</span> Tournament
+        </h1>
+        <p className="join-subtitle">سجل بياناتك للانضمام إلى التصفيات</p>
+
         <form onSubmit={handleJoin} className="join-form">
           <div className="input-group">
             <label>In-Game Name</label>
             <input
               type="text"
+              placeholder="أدخل اسمك في اللعبة"
               className="join-input"
               value={formData.name}
               onChange={(e) =>
@@ -95,6 +111,7 @@ const JoinPage = () => {
               }
             />
           </div>
+
           <div className="input-group">
             <label>Rank</label>
             <select
@@ -104,7 +121,7 @@ const JoinPage = () => {
                 setFormData({ ...formData, rank: e.target.value })
               }
             >
-              <option value="">Choose Rank...</option>
+              <option value="">اختر رانكك الحالي...</option>
               {ranks.map((r) => (
                 <option key={r} value={r}>
                   {r}
@@ -112,42 +129,52 @@ const JoinPage = () => {
               ))}
             </select>
           </div>
+
           <div className="roles-grid">
-            <select
-              className="join-input"
-              value={formData.primaryRole}
-              onChange={(e) =>
-                setFormData({ ...formData, primaryRole: e.target.value })
-              }
-            >
-              <option value="">Main Role</option>
-              {roles.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </select>
-            <select
-              className="join-input"
-              value={formData.secondaryRole}
-              onChange={(e) =>
-                setFormData({ ...formData, secondaryRole: e.target.value })
-              }
-            >
-              <option value="">Sub Role</option>
-              {roles.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </select>
+            <div className="input-group">
+              <label>الدور الأساسي</label>
+              <select
+                className="join-input"
+                value={formData.primaryRole}
+                onChange={(e) =>
+                  setFormData({ ...formData, primaryRole: e.target.value })
+                }
+              >
+                <option value="">Main Role</option>
+                {roles.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="input-group">
+              <label>الدور الثانوي</label>
+              <select
+                className="join-input"
+                value={formData.secondaryRole}
+                onChange={(e) =>
+                  setFormData({ ...formData, secondaryRole: e.target.value })
+                }
+              >
+                <option value="">Sub Role</option>
+                {roles.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
+
           <button type="submit" className="join-button">
-            Confirm & Join
+            تأكيد الانضمام
           </button>
         </form>
       </div>
     </div>
   );
 };
+
 export default JoinPage;

@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import Swal from "sweetalert2";
 import "./TournamentBracket.css";
 
 export default function TournamentBracket() {
@@ -10,6 +9,7 @@ export default function TournamentBracket() {
   const [loading, setLoading] = useState(true);
   const isAdmin = localStorage.getItem("isAdmin") === "true";
 
+  // State Management
   const [winners, setWinners] = useState(
     () => JSON.parse(localStorage.getItem("t_winners")) || {},
   );
@@ -32,9 +32,9 @@ export default function TournamentBracket() {
         const res = await axios.get(
           "https://mlbbb-production.up.railway.app/api/generate-teams",
         );
-        setTeams(res.data.teams || []);
+        setTeams(res.data.teams || res.data || []);
       } catch (err) {
-        console.error(err);
+        console.error("Error fetching teams");
       } finally {
         setLoading(false);
       }
@@ -42,41 +42,62 @@ export default function TournamentBracket() {
     fetchTeams();
   }, []);
 
-  // --- منطق تحديد الفرق النشطة وكشف العدد الفردي ---
-  const currentActiveTeams = useMemo(() => {
-    if (teams.length === 0) return [];
+  // المنطق الذكي للتحويل بين الشجرة والنقاط
+  const { isLeagueMode, activeTeams } = useMemo(() => {
+    const allNames = teams.map((t) => t.teamName);
+    const r1Winners = Object.keys(winners)
+      .filter((k) => k.startsWith("r1-"))
+      .map((k) => winners[k]);
+    const totalExpectedR1 = Math.floor(teams.length / 2);
 
-    // بنشوف مين فاز في الجولة الأولى
-    const round1Winners = Object.keys(winners)
-      .filter((key) => key.startsWith("r1-"))
-      .map((key) => winners[key]);
-
-    // إذا ما في فائزين كافيين (يعني لسه البطولة ببدايتها أو صار تغيير مفاجئ)
-    // بنرجع كل الفرق الأصلية عشان ما حدا يختفي
-    if (round1Winners.length < Math.floor(teams.length / 2)) {
-      return teams.map((t) => t.teamName);
+    // 1. إذا كان العدد الأصلي فردي
+    if (teams.length > 0 && teams.length % 2 !== 0) {
+      return { isLeagueMode: true, activeTeams: allNames };
+    }
+    // 2. إذا خلصت الجولة الأولى والعدد الناتج فردي (مثل 6 فرق صاروا 3)
+    if (
+      r1Winners.length === totalExpectedR1 &&
+      r1Winners.length > 0 &&
+      r1Winners.length % 2 !== 0
+    ) {
+      return { isLeagueMode: true, activeTeams: r1Winners };
     }
 
-    return round1Winners;
-  }, [teams, winners]);
+    return { isLeagueMode: false, activeTeams: allNames };
+  }, [winners, teams]);
 
-  const isEven =
-    currentActiveTeams.length > 0 && currentActiveTeams.length % 2 === 0;
+  const leagueMatches = useMemo(() => {
+    let m = [];
+    for (let i = 0; i < activeTeams.length; i++) {
+      for (let j = i + 1; j < activeTeams.length; j++) {
+        m.push([activeTeams[i], activeTeams[j]]);
+      }
+    }
+    return m;
+  }, [activeTeams]);
 
-  const selectWinner = (matchId, teamName, nextMatchId) => {
-    if (!isAdmin || !teamName) return;
-    setHistory((prev) => [...prev, { type: "winner", data: { ...winners } }]);
-    setWinners((prev) => ({
-      ...prev,
-      [matchId]: teamName,
-      [nextMatchId]: teamName,
-    }));
+  const selectWinner = (id, name) => {
+    if (!isAdmin || !name) return;
+    setHistory((p) => [...p, { type: "winner", data: { ...winners } }]);
+    setWinners((p) => ({ ...p, [id]: name }));
   };
 
-  const addPoint = (teamName) => {
+  const addPoint = (name) => {
     if (!isAdmin) return;
-    setHistory((prev) => [...prev, { type: "points", data: { ...scores } }]);
-    setScores((prev) => ({ ...prev, [teamName]: (prev[teamName] || 0) + 3 }));
+    setHistory((p) => [...p, { type: "points", data: { ...scores } }]);
+    setScores((p) => ({ ...p, [name]: (p[name] || 0) + 3 }));
+  };
+
+  const handleFullReset = () => {
+    if (!window.confirm("هل تريد تصفير البطولة؟ (سيبقى الأدمن مسجلاً)")) return;
+    // مسح بيانات البطولة فقط
+    localStorage.removeItem("t_winners");
+    localStorage.removeItem("t_scores");
+    localStorage.removeItem("t_history");
+    setWinners({});
+    setScores({});
+    setHistory([]);
+    window.location.reload();
   };
 
   const handleUndo = () => {
@@ -84,22 +105,10 @@ export default function TournamentBracket() {
     const last = history[history.length - 1];
     if (last.type === "winner") setWinners(last.data);
     else setScores(last.data);
-    setHistory((prev) => prev.slice(0, -1));
+    setHistory((p) => p.slice(0, -1));
   };
 
-  const leagueMatches = useMemo(() => {
-    if (isEven) return [];
-    let matches = [];
-    const tNames = currentActiveTeams;
-    for (let i = 0; i < tNames.length; i++) {
-      for (let j = i + 1; j < tNames.length; j++) {
-        matches.push({ t1: tNames[i], t2: tNames[j] });
-      }
-    }
-    return matches;
-  }, [currentActiveTeams, isEven]);
-
-  if (loading) return <div className="loader">جاري تحميل البطولة...</div>;
+  if (loading) return <div className="loader">جاري التحميل...</div>;
 
   return (
     <div className="tourney-container">
@@ -107,136 +116,150 @@ export default function TournamentBracket() {
         <button className="btn-back" onClick={() => navigate("/teams")}>
           🔙 العودة
         </button>
-        <div className="header-info">
-          <h1>{isEven ? "شجرة التصفيات" : "نظام النقاط (دوري العام)"}</h1>
-          {isAdmin && <span className="admin-tag">وضع الإدارة مفعّل</span>}
-        </div>
-        <div className="header-btns">
-          {isAdmin && (
-            <>
-              <button className="btn-undo" onClick={handleUndo}>
-                ↩ تراجع
-              </button>
-              <button
-                className="btn-reset"
-                onClick={() => {
-                  localStorage.clear();
-                  window.location.reload();
-                }}
-              >
-                🗑 تصفير
-              </button>
-            </>
-          )}
-        </div>
+        <h1>{isLeagueMode ? "مرحلة النقاط" : "شجرة التصفيات"}</h1>
+        {isAdmin && (
+          <div className="admin-btns">
+            <button className="btn-undo" onClick={handleUndo}>
+              ↩ تراجع
+            </button>
+            <button className="btn-reset" onClick={handleFullReset}>
+              🗑 تصفير
+            </button>
+          </div>
+        )}
       </header>
 
       <main className="tourney-content">
-        {!isEven ? (
-          /* --- عرض نظام النقاط --- */
+        {isLeagueMode ? (
           <div className="league-layout">
             <div className="league-card">
-              <h3>مباريات الدوري (الكل ضد الكل)</h3>
-              <div className="matches-list">
-                {leagueMatches.map((m, i) => (
-                  <div key={i} className="league-match-row">
-                    <span className="team-n">{m.t1}</span>
-                    <div className="vs-actions">
-                      {isAdmin && (
-                        <button onClick={() => addPoint(m.t1)}>فوز</button>
-                      )}
-                      <span className="vs-label">VS</span>
-                      {isAdmin && (
-                        <button onClick={() => addPoint(m.t2)}>فوز</button>
-                      )}
+              <h3>📊 الترتيب</h3>
+              <div className="points-list">
+                {activeTeams
+                  .sort((a, b) => (scores[b] || 0) - (scores[a] || 0))
+                  .map((name, i) => (
+                    <div key={i} className="league-row">
+                      <span>{name}</span>
+                      <div className="row-left">
+                        <span className="pts-tag">{scores[name] || 0} Pts</span>
+                        {isAdmin && (
+                          <button onClick={() => addPoint(name)}>+</button>
+                        )}
+                      </div>
                     </div>
-                    <span className="team-n">{m.t2}</span>
+                  ))}
+              </div>
+            </div>
+            <div className="league-card">
+              <h3>⚔️ المباريات</h3>
+              {leagueMatches.map((m, i) => (
+                <div key={i} className="match-simple">
+                  {m[0]} <span className="vs">VS</span> {m[1]}
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="bracket-wrapper">
+            {/* الجولة 1 */}
+            <div className="bracket-column">
+              <h4 className="col-title">الجولة 1</h4>
+              <div className="col-content">
+                {teams.map(
+                  (_, i) =>
+                    i % 2 === 0 &&
+                    teams[i + 1] && (
+                      <div key={i} className="match-pair">
+                        <div
+                          className={`slot ${winners[`r1-${i}`] === teams[i].teamName ? "won" : ""} ${!isAdmin ? "no-admin" : ""}`}
+                          onClick={() =>
+                            selectWinner(`r1-${i}`, teams[i].teamName)
+                          }
+                        >
+                          {teams[i].teamName}
+                        </div>
+                        <div
+                          className={`slot ${winners[`r1-${i}`] === teams[i + 1].teamName ? "won" : ""} ${!isAdmin ? "no-admin" : ""}`}
+                          onClick={() =>
+                            selectWinner(`r1-${i}`, teams[i + 1].teamName)
+                          }
+                        >
+                          {teams[i + 1].teamName}
+                        </div>
+                      </div>
+                    ),
+                )}
+              </div>
+            </div>
+
+            <div className="divider">⮕</div>
+
+            {/* نصف النهائي */}
+            <div className="bracket-column">
+              <h4 className="col-title">نصف النهائي</h4>
+              <div className="col-content">
+                {[0, 2].map((i) => (
+                  <div key={i} className="match-pair">
+                    <div
+                      className={`slot ${winners[`r2-${i}`] && winners[`r2-${i}`] === winners[`r1-${i}`] ? "won" : ""} ${!isAdmin || !winners[`r1-${i}`] ? "no-admin" : ""}`}
+                      onClick={() =>
+                        winners[`r1-${i}`] &&
+                        selectWinner(`r2-${i}`, winners[`r1-${i}`])
+                      }
+                    >
+                      {winners[`r1-${i}`] || "..."}
+                    </div>
+                    <div
+                      className={`slot ${winners[`r2-${i}`] && winners[`r2-${i}`] === winners[`r1-${i + 2}`] ? "won" : ""} ${!isAdmin || !winners[`r1-${i + 2}`] ? "no-admin" : ""}`}
+                      onClick={() =>
+                        winners[`r1-${i + 2}`] &&
+                        selectWinner(`r2-${i}`, winners[`r1-${i + 2}`])
+                      }
+                    >
+                      {winners[`r1-${i + 2}`] || "..."}
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
-            <div className="league-card">
-              <h3>جدول الترتيب</h3>
-              <table className="points-table">
-                <thead>
-                  <tr>
-                    <th>الفريق</th>
-                    <th>النقاط</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[...currentActiveTeams]
-                    .sort((a, b) => (scores[b] || 0) - (scores[a] || 0))
-                    .map((tName, i) => (
-                      <tr
-                        key={i}
-                        className={i === 0 && scores[tName] > 0 ? "top" : ""}
-                      >
-                        <td>
-                          {tName} {i === 0 && scores[tName] > 0 && "🏆"}
-                        </td>
-                        <td>{scores[tName] || 0}</td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        ) : (
-          /* --- عرض نظام الشجرة --- */
-          <div className="bracket-layout">
-            <div className="bracket-col">
-              <h3>الجولة الأولى</h3>
-              {teams.map(
-                (_, i) =>
-                  i % 2 === 0 &&
-                  teams[i + 1] && (
-                    <div key={i} className="match-card">
-                      <div
-                        className={`slot ${winners[`r1-${i}`] === teams[i].teamName ? "win" : ""}`}
-                        onClick={() =>
-                          selectWinner(
-                            `r1-${i}`,
-                            teams[i].teamName,
-                            i < 2 ? "f1" : "f2",
-                          )
-                        }
-                      >
-                        {teams[i].teamName}
-                      </div>
-                      <div className="vs-line">VS</div>
-                      <div
-                        className={`slot ${winners[`r1-${i}`] === teams[i + 1].teamName ? "win" : ""}`}
-                        onClick={() =>
-                          selectWinner(
-                            `r1-${i}`,
-                            teams[i + 1].teamName,
-                            i < 2 ? "f1" : "f2",
-                          )
-                        }
-                      >
-                        {teams[i + 1].teamName}
-                      </div>
+
+            <div className="divider">🏆</div>
+
+            {/* البطل */}
+            <div className="bracket-column">
+              <h4 className="col-title">البطل</h4>
+              <div className="col-content center">
+                <div
+                  className={`winner-podium ${winners["final"] ? "is-active" : ""}`}
+                >
+                  <div className="trophy-big">🏆</div>
+                  {winners["final"] ? (
+                    <h2 className="winner-name">{winners["final"]}</h2>
+                  ) : (
+                    <div className="pick-final">
+                      <p>انتظار الحسم</p>
+                      {isAdmin && (
+                        <div className="final-btns">
+                          <button
+                            disabled={!winners["r2-0"]}
+                            onClick={() =>
+                              selectWinner("final", winners["r2-0"])
+                            }
+                          >
+                            {winners["r2-0"] || "?"}
+                          </button>
+                          <button
+                            disabled={!winners["r2-2"]}
+                            onClick={() =>
+                              selectWinner("final", winners["r2-2"])
+                            }
+                          >
+                            {winners["r2-2"] || "?"}
+                          </button>
+                        </div>
+                      )}
                     </div>
-                  ),
-              )}
-            </div>
-            <div className="arrow-icon">⮕</div>
-            <div className="bracket-col">
-              <h3>النهائي</h3>
-              <div className="match-card gold">
-                <div
-                  className={`slot ${winners["final"] === winners["f1"] && winners["f1"] ? "champ" : ""}`}
-                  onClick={() => selectWinner("final", winners["f1"], "done")}
-                >
-                  {winners["f1"] || "بانتظار فائز"}
-                </div>
-                <div className="vs-line">VS</div>
-                <div
-                  className={`slot ${winners["final"] === winners["f2"] && winners["f2"] ? "champ" : ""}`}
-                  onClick={() => selectWinner("final", winners["f2"], "done")}
-                >
-                  {winners["f2"] || "بانتظار فائز"}
+                  )}
                 </div>
               </div>
             </div>

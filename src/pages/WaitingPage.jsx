@@ -12,6 +12,7 @@ const WaitingPage = () => {
   const [adminClickCount, setAdminClickCount] = useState(0);
   const navigate = useNavigate();
 
+  // الرابط الجديد المعتمد على Railway
   const API_BASE_URL = "https://mlbbb-production.up.railway.app";
 
   const fetchStatus = async () => {
@@ -19,7 +20,7 @@ const WaitingPage = () => {
       const res = await axios.get(`${API_BASE_URL}/api/players`);
       setPlayers(res.data);
     } catch (err) {
-      console.error("Connection Error...");
+      console.error("خطأ في الاتصال بالسيرفر...");
     }
   };
 
@@ -30,48 +31,54 @@ const WaitingPage = () => {
   }, []);
 
   const startTournament = async () => {
+    // التحقق من العدد المطلوب للبدء (10 لاعبين لتشكيل فريقين)
     if (players.length < 10) {
-      Swal.fire("عفواً", "لازم 10 لاعبين على الأقل", "warning");
+      Swal.fire("تنبيه", "يجب توفر 10 لاعبين على الأقل للبدء", "warning");
       return;
     }
+
     try {
       Swal.fire({
         title: "جاري توزيع الفرق...",
+        text: "يرجى الانتظار قليلاً",
         allowOutsideClick: false,
-        didOpen: () => {
-          Swal.showLoading();
-        },
+        didOpen: () => Swal.showLoading(),
       });
 
-      // 1. التوزيع في السيرفر (الحل اللولبي)
+      // 1. طلب توزيع الفرق من السيرفر
       await axios.post(`${API_BASE_URL}/api/shuffle-teams`);
-      // 2. قفل التسجيل
+
+      // 2. إيقاف التسجيل الجديد لضمان استقرار البطولة
       await axios.post(`${API_BASE_URL}/api/toggle-reg`, { status: false });
 
       Swal.close();
-      navigate("/teams"); // الانتقال والبيانات جاهزة
+      navigate("/teams");
     } catch (err) {
-      Swal.fire("خطأ", "فشل التوزيع، تأكد من السيرفر", "error");
+      Swal.fire("خطأ", "فشل في عملية التوزيع، تأكد من اتصال السيرفر", "error");
     }
   };
 
-  // باقي الدوال (delete, reset, handleAdminTitleClick) تبقى كما هي عندك تماماً
   const deletePlayer = async (id) => {
     try {
       await axios.delete(`${API_BASE_URL}/api/player/${id}`);
       fetchStatus();
     } catch (err) {
-      Swal.fire("خطأ", "فشل الحذف", "error");
+      Swal.fire("خطأ", "لم يتمكن السيرفر من حذف اللاعب", "error");
     }
   };
 
   const handleReset = async () => {
     const confirm = await Swal.fire({
-      title: "تصفير البطولة؟",
-      text: "سيتم حذف الجميع!",
+      title: "تصفير البطولة بالكامل؟",
+      text: "هذا الإجراء سيحذف كافة اللاعبين والنتائج ولا يمكن التراجع عنه!",
       icon: "warning",
       showCancelButton: true,
+      confirmButtonText: "نعم، احذف الكل",
+      cancelButtonText: "إلغاء",
+      background: "#1e293b",
+      color: "#fff",
     });
+
     if (confirm.isConfirmed) {
       try {
         await axios.post(`${API_BASE_URL}/api/reset`, {
@@ -80,7 +87,7 @@ const WaitingPage = () => {
         localStorage.clear();
         window.location.href = "/";
       } catch (e) {
-        Swal.fire("خطأ", "فشل التصفير", "error");
+        Swal.fire("خطأ", "فشل تصفير قاعدة البيانات", "error");
       }
     }
   };
@@ -89,14 +96,20 @@ const WaitingPage = () => {
     const newCount = adminClickCount + 1;
     if (newCount >= 5) {
       setAdminClickCount(0);
-      Swal.fire({ title: "دخول الإدارة", input: "password" }).then(
-        ({ value: code }) => {
-          if (code === "8520085") {
-            setIsAdminState(true);
-            localStorage.setItem("isAdmin", "true");
-          }
-        },
-      );
+      Swal.fire({
+        title: "كود الإدارة",
+        input: "password",
+        background: "#1e293b",
+        color: "#fff",
+      }).then(({ value: code }) => {
+        if (code === "8520085") {
+          setIsAdminState(true);
+          localStorage.setItem("isAdmin", "true");
+          Swal.fire("نجح", "تم تفعيل وضع الإدارة", "success");
+        } else if (code) {
+          Swal.fire("خطأ", "الكود غير صحيح", "error");
+        }
+      });
     } else {
       setAdminClickCount(newCount);
     }
@@ -111,6 +124,7 @@ const WaitingPage = () => {
           </h1>
           <div className="status-badge">المسجلون: {players.length}</div>
         </header>
+
         <div className="players-scroll-area">
           <div className="players-grid">
             {players.map((p, i) => (
@@ -134,11 +148,12 @@ const WaitingPage = () => {
             ))}
           </div>
         </div>
+
         <footer className="action-area">
           {isAdminState ? (
             <div className="admin-controls">
               <button className="btn-main" onClick={startTournament}>
-                🚀 توزيع والبدء
+                🚀 توزيع وبدء البطولة
               </button>
               <div className="secondary-btns">
                 <button
@@ -148,16 +163,16 @@ const WaitingPage = () => {
                     fetchStatus();
                   }}
                 >
-                  🤖 +5 بوتات
+                  🤖 إضافة 5 بوتات
                 </button>
                 <button className="btn-danger" onClick={handleReset}>
-                  🗑️ تصفير
+                  🗑️ تصفير البيانات
                 </button>
               </div>
             </div>
           ) : (
             <button className="btn-main" onClick={() => navigate("/teams")}>
-              عرض الفرق
+              عرض الفرق الحالية
             </button>
           )}
         </footer>
@@ -165,4 +180,5 @@ const WaitingPage = () => {
     </div>
   );
 };
+
 export default WaitingPage;
