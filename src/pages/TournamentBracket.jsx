@@ -9,12 +9,10 @@ export default function TournamentBracket() {
   const [bracket, setBracket] = useState([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // دالة بناء شجرة جديدة (هون بنضمن إن كل الفرق تدخل)
   const createNewBracket = useCallback((teams) => {
     if (!teams || teams.length === 0) return;
 
     let firstRound = [];
-    // نمشي على الفرق 2 بـ 2 عشان نطلع مباريات صحيحة
     for (let i = 0; i < teams.length; i += 2) {
       const t1 = teams[i].teamName;
       const t2 = teams[i + 1] ? teams[i + 1].teamName : "باي (تأهل تلقائي)";
@@ -28,18 +26,15 @@ export default function TournamentBracket() {
 
     setBracket([firstRound]);
     localStorage.setItem("tourney_bracket", JSON.stringify([firstRound]));
-    localStorage.setItem("tourney_mode", "bracket");
   }, []);
 
   useEffect(() => {
     const savedBracket = localStorage.getItem("tourney_bracket");
     const liveTeams = JSON.parse(localStorage.getItem("generatedTeams")) || [];
 
-    // إذا ما في جدول بالذاكرة (يعني الأدمن كبس إنشاء جديد) -> ابني بالفرق اللي واصلة هسا
     if (!savedBracket && liveTeams.length > 0) {
       createNewBracket(liveTeams);
     } else if (savedBracket) {
-      // إذا في جدول قديم وما انمسح -> حمله كما هو
       setBracket(JSON.parse(savedBracket));
     }
     setIsLoaded(true);
@@ -49,11 +44,10 @@ export default function TournamentBracket() {
     if (!isAdmin || !winner || winner.includes("باي")) return;
 
     const newBracket = [...bracket];
-    if (newBracket[rIdx][mIdx].winner) return; // منع تغيير النتيجة بعد التسجيل
+    if (newBracket[rIdx][mIdx].winner) return;
 
     newBracket[rIdx][mIdx].winner = winner;
 
-    // فحص إذا خلصت الجولة عشان نفتح الجولة الجاية
     const allFinished = newBracket[rIdx].every((m) => m.winner !== null);
 
     if (allFinished && newBracket[rIdx].length > 1) {
@@ -68,47 +62,57 @@ export default function TournamentBracket() {
       }
       newBracket.push(nextRound);
     } else if (allFinished && newBracket[rIdx].length === 1) {
-      Swal.fire("ألف مبروك!", `🏆 البطل: ${winner}`, "success");
+      Swal.fire("🏆 البطل هو", winner, "success");
     }
 
     setBracket(newBracket);
     localStorage.setItem("tourney_bracket", JSON.stringify(newBracket));
   };
 
-  if (!isLoaded) return <div className="loading">جاري تحميل الشجرة...</div>;
+  if (!isLoaded) return <div className="loading">جاري التحميل...</div>;
 
   return (
     <div className="tournament-page">
       <div className="header">
         <button className="btn-back" onClick={() => navigate("/teams")}>
-          ↩ الرجوع للفرق
+          ↩ رجوع
         </button>
         <h1>شجرة البطولة ⚔️</h1>
       </div>
 
       <div className="bracket-container">
-        {bracket.map((round, rIdx) => (
-          <div key={rIdx} className="round-col">
-            <h3>{rIdx === 0 ? "نصف النهائي" : "النهائي"}</h3>
-            {round.map((match, mIdx) => (
-              <div key={mIdx} className="match-card">
-                <div
-                  className={`team-box ${match.winner === match.t1 ? "winner" : ""}`}
-                  onClick={() => handleWin(rIdx, mIdx, match.t1)}
-                >
-                  {match.t1}
+        {bracket.length > 0 ? (
+          bracket.map((round, rIdx) => (
+            <div key={rIdx} className="round-col">
+              <h3>
+                {rIdx === 0
+                  ? "الدور الأول"
+                  : rIdx === 1
+                    ? "نصف النهائي"
+                    : "النهائي"}
+              </h3>
+              {round.map((match, mIdx) => (
+                <div key={mIdx} className="match-card">
+                  <div
+                    className={`team-box ${match.winner === match.t1 ? "winner" : ""}`}
+                    onClick={() => handleWin(rIdx, mIdx, match.t1)}
+                  >
+                    {match.t1}
+                  </div>
+                  <div className="vs-divider">VS</div>
+                  <div
+                    className={`team-box ${match.winner === match.t2 ? "winner" : ""}`}
+                    onClick={() => handleWin(rIdx, mIdx, match.t2)}
+                  >
+                    {match.t2}
+                  </div>
                 </div>
-                <div className="vs-divider">VS</div>
-                <div
-                  className={`team-box ${match.winner === match.t2 ? "winner" : ""}`}
-                  onClick={() => handleWin(rIdx, mIdx, match.t2)}
-                >
-                  {match.t2}
-                </div>
-              </div>
-            ))}
-          </div>
-        ))}
+              ))}
+            </div>
+          ))
+        ) : (
+          <div className="no-data">بانتظار إنشاء البطولة...</div>
+        )}
       </div>
     </div>
   );
