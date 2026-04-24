@@ -9,7 +9,6 @@ export default function TournamentBracket() {
   const [loading, setLoading] = useState(true);
   const isAdmin = localStorage.getItem("isAdmin") === "true";
 
-  // State Management
   const [winners, setWinners] = useState(
     () => JSON.parse(localStorage.getItem("t_winners")) || {},
   );
@@ -42,7 +41,6 @@ export default function TournamentBracket() {
     fetchTeams();
   }, []);
 
-  // المنطق الذكي للتحويل بين الشجرة والنقاط
   const { isLeagueMode, activeTeams } = useMemo(() => {
     const allNames = teams.map((t) => t.teamName);
     const r1Winners = Object.keys(winners)
@@ -50,19 +48,18 @@ export default function TournamentBracket() {
       .map((k) => winners[k]);
     const totalExpectedR1 = Math.floor(teams.length / 2);
 
-    // 1. إذا كان العدد الأصلي فردي
+    // 1. نظام النقاط إذا كان العدد الأصلي فردي
     if (teams.length > 0 && teams.length % 2 !== 0) {
       return { isLeagueMode: true, activeTeams: allNames };
     }
-    // 2. إذا خلصت الجولة الأولى والعدد الناتج فردي (مثل 6 فرق صاروا 3)
+    // 2. نظام النقاط إذا نتج عدد فردي أكبر من 1 بعد الجولة الأولى
     if (
       r1Winners.length === totalExpectedR1 &&
-      r1Winners.length > 0 &&
+      r1Winners.length > 1 &&
       r1Winners.length % 2 !== 0
     ) {
       return { isLeagueMode: true, activeTeams: r1Winners };
     }
-
     return { isLeagueMode: false, activeTeams: allNames };
   }, [winners, teams]);
 
@@ -89,8 +86,7 @@ export default function TournamentBracket() {
   };
 
   const handleFullReset = () => {
-    if (!window.confirm("هل تريد تصفير البطولة؟ (سيبقى الأدمن مسجلاً)")) return;
-    // مسح بيانات البطولة فقط
+    if (!window.confirm("هل تريد تصفير البطولة؟")) return;
     localStorage.removeItem("t_winners");
     localStorage.removeItem("t_scores");
     localStorage.removeItem("t_history");
@@ -160,106 +156,132 @@ export default function TournamentBracket() {
             </div>
           </div>
         ) : (
-          <div className="bracket-wrapper">
-            {/* الجولة 1 */}
-            <div className="bracket-column">
-              <h4 className="col-title">الجولة 1</h4>
-              <div className="col-content">
-                {teams.map(
-                  (_, i) =>
-                    i % 2 === 0 &&
-                    teams[i + 1] && (
-                      <div key={i} className="match-pair">
-                        <div
-                          className={`slot ${winners[`r1-${i}`] === teams[i].teamName ? "won" : ""} ${!isAdmin ? "no-admin" : ""}`}
-                          onClick={() =>
-                            selectWinner(`r1-${i}`, teams[i].teamName)
-                          }
-                        >
-                          {teams[i].teamName}
+          <div className="bracket-scroll-container">
+            <div className="bracket-wrapper">
+              {/* الجولة 1 */}
+              <div className="bracket-column">
+                <h4 className="col-title">الجولة 1</h4>
+                <div className="col-content">
+                  {teams.map(
+                    (_, i) =>
+                      i % 2 === 0 &&
+                      teams[i + 1] && (
+                        <div key={i} className="match-pair">
+                          <div
+                            className={`slot ${winners[`r1-${i}`] === teams[i].teamName ? "won" : ""} ${!isAdmin ? "no-admin" : ""}`}
+                            onClick={() =>
+                              selectWinner(`r1-${i}`, teams[i].teamName)
+                            }
+                          >
+                            {teams[i].teamName}
+                          </div>
+                          <div
+                            className={`slot ${winners[`r1-${i}`] === teams[i + 1].teamName ? "won" : ""} ${!isAdmin ? "no-admin" : ""}`}
+                            onClick={() =>
+                              selectWinner(`r1-${i}`, teams[i + 1].teamName)
+                            }
+                          >
+                            {teams[i + 1].teamName}
+                          </div>
                         </div>
-                        <div
-                          className={`slot ${winners[`r1-${i}`] === teams[i + 1].teamName ? "won" : ""} ${!isAdmin ? "no-admin" : ""}`}
-                          onClick={() =>
-                            selectWinner(`r1-${i}`, teams[i + 1].teamName)
-                          }
-                        >
-                          {teams[i + 1].teamName}
-                        </div>
-                      </div>
-                    ),
-                )}
+                      ),
+                  )}
+                </div>
               </div>
-            </div>
 
-            <div className="divider">⮕</div>
-
-            {/* نصف النهائي */}
-            <div className="bracket-column">
-              <h4 className="col-title">نصف النهائي</h4>
-              <div className="col-content">
-                {[0, 2].map((i) => (
-                  <div key={i} className="match-pair">
-                    <div
-                      className={`slot ${winners[`r2-${i}`] && winners[`r2-${i}`] === winners[`r1-${i}`] ? "won" : ""} ${!isAdmin || !winners[`r1-${i}`] ? "no-admin" : ""}`}
-                      onClick={() =>
-                        winners[`r1-${i}`] &&
-                        selectWinner(`r2-${i}`, winners[`r1-${i}`])
-                      }
-                    >
-                      {winners[`r1-${i}`] || "..."}
-                    </div>
-                    <div
-                      className={`slot ${winners[`r2-${i}`] && winners[`r2-${i}`] === winners[`r1-${i + 2}`] ? "won" : ""} ${!isAdmin || !winners[`r1-${i + 2}`] ? "no-admin" : ""}`}
-                      onClick={() =>
-                        winners[`r1-${i + 2}`] &&
-                        selectWinner(`r2-${i}`, winners[`r1-${i + 2}`])
-                      }
-                    >
-                      {winners[`r1-${i + 2}`] || "..."}
+              {/* نصف النهائي - يظهر فقط إذا كان هناك أكثر من مباراتين في الجولة 1 */}
+              {teams.length > 2 && (
+                <>
+                  <div className="divider">⮕</div>
+                  <div className="bracket-column">
+                    <h4 className="col-title">نصف النهائي</h4>
+                    <div className="col-content">
+                      {[0, 2].map((i) => {
+                        const t1 = winners[`r1-${i}`];
+                        const t2 = winners[`r1-${i + 2}`];
+                        if (!t1 && !t2) return null;
+                        return (
+                          <div key={i} className="match-pair">
+                            <div
+                              className={`slot ${winners[`r2-${i}`] === t1 && t1 ? "won" : ""} ${!isAdmin || !t1 ? "no-admin" : ""}`}
+                              onClick={() => t1 && selectWinner(`r2-${i}`, t1)}
+                            >
+                              {t1 || "..."}
+                            </div>
+                            <div
+                              className={`slot ${winners[`r2-${i}`] === t2 && t2 ? "won" : ""} ${!isAdmin || !t2 ? "no-admin" : ""}`}
+                              onClick={() => t2 && selectWinner(`r2-${i}`, t2)}
+                            >
+                              {t2 || "..."}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
+                </>
+              )}
 
-            <div className="divider">🏆</div>
+              <div className="divider">🏆</div>
 
-            {/* البطل */}
-            <div className="bracket-column">
-              <h4 className="col-title">البطل</h4>
-              <div className="col-content center">
-                <div
-                  className={`winner-podium ${winners["final"] ? "is-active" : ""}`}
-                >
-                  <div className="trophy-big">🏆</div>
-                  {winners["final"] ? (
-                    <h2 className="winner-name">{winners["final"]}</h2>
-                  ) : (
-                    <div className="pick-final">
-                      <p>انتظار الحسم</p>
-                      {isAdmin && (
-                        <div className="final-btns">
-                          <button
-                            disabled={!winners["r2-0"]}
-                            onClick={() =>
-                              selectWinner("final", winners["r2-0"])
-                            }
-                          >
-                            {winners["r2-0"] || "?"}
-                          </button>
-                          <button
-                            disabled={!winners["r2-2"]}
-                            onClick={() =>
-                              selectWinner("final", winners["r2-2"])
-                            }
-                          >
-                            {winners["r2-2"] || "?"}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
+              {/* البطل */}
+              <div className="bracket-column">
+                <h4 className="col-title">البطل</h4>
+                <div className="col-content center">
+                  <div
+                    className={`winner-podium ${winners["final"] ? "is-active" : ""}`}
+                  >
+                    <div className="trophy-big">🏆</div>
+                    {winners["final"] ? (
+                      <h2 className="winner-name">{winners["final"]}</h2>
+                    ) : (
+                      <div className="pick-final">
+                        <p>انتظار الحسم</p>
+                        {isAdmin && (
+                          <div className="final-btns">
+                            {/* عرض أزرار الفائزين من نصف النهائي */}
+                            {winners["r2-0"] && (
+                              <button
+                                onClick={() =>
+                                  selectWinner("final", winners["r2-0"])
+                                }
+                              >
+                                {winners["r2-0"]}
+                              </button>
+                            )}
+                            {winners["r2-2"] && (
+                              <button
+                                onClick={() =>
+                                  selectWinner("final", winners["r2-2"])
+                                }
+                              >
+                                {winners["r2-2"]}
+                              </button>
+                            )}
+                            {/* حالة نهائي مباشر (فريقين فقط) */}
+                            {teams.length === 2 && winners["r1-0"] && (
+                              <>
+                                <button
+                                  onClick={() =>
+                                    selectWinner("final", teams[0].teamName)
+                                  }
+                                >
+                                  {teams[0].teamName}
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    selectWinner("final", teams[1].teamName)
+                                  }
+                                >
+                                  {teams[1].teamName}
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

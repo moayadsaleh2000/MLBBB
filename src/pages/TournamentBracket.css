@@ -1,182 +1,223 @@
-/* --- التنسيقات العامة --- */
+/* الحاوية الرئيسية */
 .tourney-container {
-  background-color: #111;
   min-height: 100vh;
-  color: white;
+  background-color: #0f0f0f;
+  color: #ffffff;
   padding: 20px;
-  direction: rtl;
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
 }
 
+/* الهيدر والأزرار */
 .tourney-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-bottom: 15px;
-  border-bottom: 2px solid #333;
+  text-align: center;
   margin-bottom: 30px;
 }
 
 .tourney-header h1 {
-  font-size: 1.8rem;
   color: #ff9800;
-  margin: 0;
+  font-size: 1.8rem;
+  margin: 15px 0;
 }
 
-/* أزرار التحكم للأدمن */
 .admin-btns {
   display: flex;
+  justify-content: center;
   gap: 10px;
+  margin-top: 10px;
 }
 
+.btn-back,
 .btn-undo,
-.btn-reset,
-.btn-back {
-  padding: 8px 15px;
-  border-radius: 8px;
+.btn-reset {
+  padding: 8px 16px;
   border: none;
+  border-radius: 6px;
   cursor: pointer;
   font-weight: bold;
   transition: 0.3s;
 }
 
+.btn-back {
+  background: #333;
+  color: white;
+}
 .btn-undo {
-  background: #3b82f6;
+  background: #2196f3;
   color: white;
 }
 .btn-reset {
-  background: #ef4444;
-  color: white;
-}
-.btn-back {
-  background: #444;
+  background: #f44336;
   color: white;
 }
 
-/* --- الشجرة الأفقية --- */
+/* --- نظام الشجرة (الجزء الأهم للموبايل) --- */
+
+/* حاوية التمرير: تضمن عدم خروج الشجرة عن الشاشة */
+.bracket-scroll-container {
+  width: 100%;
+  overflow-x: auto; /* تفعيل السحب الأفقي */
+  padding: 20px 0;
+  display: flex;
+  justify-content: flex-start; /* يبدأ من اليسار للسماح بالسحب */
+  -webkit-overflow-scrolling: touch; /* سحب ناعم على آيفون */
+}
+
+/* لإخفاء شريط التمرير القبيح في بعض المتصفحات مع الحفاظ على الوظيفة */
+.bracket-scroll-container::-webkit-scrollbar {
+  height: 6px;
+}
+.bracket-scroll-container::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 10px;
+}
+
 .bracket-wrapper {
   display: flex;
-  justify-content: center;
-  align-items: stretch;
-  gap: 10px;
-  padding-bottom: 20px;
-  /* يسمح بالتمرير الأفقي في الموبايل إذا كانت الشجرة كبيرة */
-  overflow-x: auto;
+  align-items: center;
+  gap: 15px;
+  margin: 0 auto;
+  min-width: max-content; /* يمنع انكماش الأعمدة */
+  padding: 0 20px;
 }
 
 .bracket-column {
   display: flex;
   flex-direction: column;
-  min-width: 180px;
-  flex-shrink: 0;
+  gap: 15px;
+  min-width: 150px;
 }
 
 .col-title {
   text-align: center;
+  font-size: 0.9rem;
   color: #888;
-  margin-bottom: 15px;
-  font-size: 1rem;
+  text-transform: uppercase;
+  margin-bottom: 10px;
 }
 
 .col-content {
   display: flex;
   flex-direction: column;
   justify-content: space-around;
-  flex-grow: 1;
-  min-height: 450px; /* طول افتراضي لضمان التناسق */
+  gap: 30px;
+  min-height: 400px; /* يعطي مساحة لتوزيع المباريات عمودياً */
 }
 
-/* المربعات (المباريات) */
+/* تصميم خلية المباراة */
 .match-pair {
-  background: #222;
-  border: 1px solid #444;
+  display: flex;
+  flex-direction: column;
+  background: #1e1e1e;
   border-radius: 12px;
-  margin: 10px 0;
+  border: 1px solid #333;
   overflow: hidden;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+  width: 140px;
 }
 
 .slot {
-  padding: 15px;
+  padding: 12px 10px;
   text-align: center;
+  font-size: 0.85rem;
   cursor: pointer;
-  border-bottom: 1px solid #333;
-  transition: background 0.3s;
-  font-weight: 500;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid #2a2a2a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #ddd;
 }
 
 .slot:last-child {
   border-bottom: none;
 }
-
-.slot.won {
-  background: #28a745 !important;
-  color: white;
-  font-weight: bold;
+.slot:hover {
+  background: #252525;
 }
 
-.no-admin {
+/* حالة الفوز */
+.slot.won {
+  background: linear-gradient(45deg, #ff9800, #ffc107);
+  color: #000;
+  font-weight: 800;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.3);
+}
+
+.slot.no-admin {
   cursor: default;
 }
 
-/* الفواصل بين الجولات */
+/* الفواصل (الأسهم) */
 .divider {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #444;
   font-size: 1.2rem;
-  padding: 0 5px;
+  color: #444;
+  user-select: none;
 }
 
-/* --- منصة التتويج (البطل) --- */
+/* --- تصميم منصة البطل --- */
 .winner-podium {
-  border: 2px solid #d4af37;
-  padding: 30px;
+  background: linear-gradient(145deg, #1a1a1a, #000);
+  border: 2px solid #ffd700;
   border-radius: 20px;
-  background: rgba(212, 175, 55, 0.05);
+  padding: 25px 15px;
   text-align: center;
-  transition: 0.5s;
+  min-width: 180px;
+  box-shadow: 0 0 30px rgba(255, 215, 0, 0.15);
+  animation: glow 2s infinite alternate;
 }
 
-.winner-podium.is-active {
-  background: linear-gradient(135deg, #d4af37, #f1c40f);
-  color: black;
-  transform: scale(1.05);
-  box-shadow: 0 0 25px rgba(212, 175, 55, 0.6);
+@keyframes glow {
+  from {
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.1);
+  }
+  to {
+    box-shadow: 0 0 25px rgba(255, 215, 0, 0.3);
+  }
 }
 
 .trophy-big {
-  font-size: 3.5rem;
+  font-size: 3rem;
   margin-bottom: 10px;
 }
+
 .winner-name {
-  font-size: 2rem;
-  margin: 0;
-  font-weight: 800;
+  color: #ffd700;
+  font-size: 1.4rem;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+.pick-final p {
+  font-size: 0.8rem;
+  color: #888;
+  margin-bottom: 15px;
 }
 
 .final-btns {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-top: 15px;
-}
-.final-btns button {
-  background: rgba(0, 0, 0, 0.5);
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  padding: 8px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 0.85rem;
+  gap: 10px;
 }
 
-/* --- نظام الدوري (النقاط) --- */
+.final-btns button {
+  background: #2a2a2a;
+  color: #fff;
+  border: 1px solid #444;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  transition: 0.3s;
+}
+
+.final-btns button:not(:disabled):hover {
+  border-color: #ffd700;
+  color: #ffd700;
+}
+
+/* --- تحسينات نظام النقاط --- */
 .league-layout {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 25px;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
 }
 
 .league-card {
@@ -190,80 +231,35 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 15px;
-  border-bottom: 1px solid #252525;
+  padding: 12px;
+  border-bottom: 1px solid #2a2a2a;
 }
 
 .pts-tag {
   background: #ff9800;
-  color: black;
-  padding: 4px 10px;
-  border-radius: 6px;
+  color: #000;
+  padding: 2px 8px;
+  border-radius: 4px;
   font-weight: bold;
-  font-size: 0.9rem;
+  margin-right: 10px;
 }
 
-.match-simple {
-  background: #222;
-  padding: 12px;
-  margin: 10px 0;
-  border-radius: 10px;
-  text-align: center;
-  border: 1px solid #333;
-}
-
-.vs {
-  color: #ff9800;
-  margin: 0 10px;
-  font-weight: bold;
-}
-
-/* --- Media Queries (استجابة الشاشة) --- */
-
-/* للشاشات المتوسطة والصغيرة (الموبايل والتابلت) */
-@media (max-width: 768px) {
-  .tourney-header {
-    flex-direction: column;
-    gap: 15px;
-    text-align: center;
+/* --- تعديلات الشاشات الصغيرة جداً --- */
+@media (max-width: 480px) {
+  .tourney-container {
+    padding: 10px;
   }
-
+  .bracket-column {
+    min-width: 130px;
+  }
+  .match-pair {
+    width: 120px;
+  }
+  .slot {
+    font-size: 0.75rem;
+    padding: 10px 5px;
+  }
   .tourney-header h1 {
     font-size: 1.4rem;
   }
-
-  /* تحويل نظام الدوري لعمود واحد */
-  .league-layout {
-    grid-template-columns: 1fr;
-  }
-
-  /* تقليل أحجام الشجرة لتناسب عرض الشاشة */
-  .bracket-column {
-    min-width: 150px;
-  }
-
-  .col-content {
-    min-height: 350px;
-  }
-
-  .slot {
-    padding: 10px;
-    font-size: 0.85rem;
-  }
-
-  .winner-name {
-    font-size: 1.5rem;
-  }
-  .trophy-big {
-    font-size: 2.5rem;
-  }
-}
-
-/* تحسين شكل السكرول بار في الشجرة */
-.bracket-wrapper::-webkit-scrollbar {
-  height: 6px;
-}
-.bracket-wrapper::-webkit-scrollbar-thumb {
-  background: #444;
-  border-radius: 10px;
 }
